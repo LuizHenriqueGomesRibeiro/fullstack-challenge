@@ -1,24 +1,30 @@
+import { formatCents, formatMultiplier } from '@crash/contracts';
 import { Link, createFileRoute } from '@tanstack/react-router';
-import type { CSSProperties } from 'react';
-import {
-  formatCents,
-  formatMultiplier
-} from '@crash/contracts';
-import { useAuth } from '../packages/core/auth/auth-context';
-import type { PlayerIdentity } from '../packages/core/auth/oidc';
+import { useAuth } from '../packages/core/hooks/auth';
 import { useHome } from 'src/packages/core/hooks';
+import type { CSSProperties } from 'react';
+
+export const Route = createFileRoute('/')({
+  component: HomePage,
+});
 
 export function HomePage() {
-  const auth = useAuth()
+  const auth = useAuth();
 
   if (auth.status !== 'authenticated' || !auth.player) {
-    return <AuthGate />
+    return <section className="auth-panel">
+      <div className="eyebrow">Login OIDC / Keycloak</div>
+      <h1>Entre para jogar multiplayer.</h1>
+      <p className="lede">
+        Cada sessao usa o usuario autenticado no Keycloak para criar carteira,
+        apostar e fazer cashout com identidade propria.
+      </p>
+      <Link className="primary-action auth-action" search={{ returnTo: '/' }} to="/login">
+        Entrar com Keycloak
+      </Link>
+    </section>
   }
 
-  return <GamePage player={auth.player} />
-}
-
-function GamePage({ player }: { player: PlayerIdentity }) {
   const {
     betAmount,
     betsQuery,
@@ -42,8 +48,8 @@ function GamePage({ player }: { player: PlayerIdentity }) {
     betStatusLabel,
     eventLabel,
     phaseLabel
-  } = useHome(player);
-
+  } = useHome(auth.player);
+  
   return <section className="game-grid">
     <div className="hero-board">
       <div className="board-copy">
@@ -90,8 +96,8 @@ function GamePage({ player }: { player: PlayerIdentity }) {
     <aside className="control-stack">
       <div className="wallet-card">
         <span>Jogador</span>
-        <strong>{player.username}</strong>
-        <small>{player.id}</small>
+        <strong>{auth.player.username}</strong>
+        <small>{auth.player.id}</small>
         <div className="balance">
           {walletQuery.isLoading
             ? 'Carregando...'
@@ -204,23 +210,5 @@ function GamePage({ player }: { player: PlayerIdentity }) {
       <p>Min/Max: R$ 1,00 / R$ 1.000,00</p>
       <p>Minhas apostas salvas: {betsQuery.data?.length ?? 0}</p>
     </div>
-  </section>
-}
-
-export const Route = createFileRoute('/')({
-  component: HomePage,
-})
-
-function AuthGate() {
-  return <section className="auth-panel">
-    <div className="eyebrow">Login OIDC / Keycloak</div>
-    <h1>Entre para jogar multiplayer.</h1>
-    <p className="lede">
-      Cada sessao usa o usuario autenticado no Keycloak para criar carteira,
-      apostar e fazer cashout com identidade propria.
-    </p>
-    <Link className="primary-action auth-action" search={{ returnTo: '/' }} to="/login">
-      Entrar com Keycloak
-    </Link>
   </section>
 }

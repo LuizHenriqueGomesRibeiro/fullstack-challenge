@@ -1,4 +1,4 @@
-import { Injectable, type MessageEvent, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import {
   DEFAULT_PLAYER_ID,
   DEFAULT_USERNAME,
@@ -45,7 +45,7 @@ interface RoundRecord extends RoundDto {
 
 @Injectable()
 export class GameEngineService implements OnModuleDestroy {
-  private readonly eventsSubject = new Subject<MessageEvent>();
+  private readonly eventsSubject = new Subject<RealtimeEventDto>();
   private readonly bettingWindowMs = readIntegerEnv("BETTING_WINDOW_MS", 10_000);
   private readonly postCrashDelayMs = readIntegerEnv("POST_CRASH_DELAY_MS", 3_000);
   private readonly tickMs = readIntegerEnv("ROUND_TICK_MS", 250);
@@ -68,7 +68,7 @@ export class GameEngineService implements OnModuleDestroy {
     this.currentRound = this.createNextRound();
   }
 
-  get realtimeEvents$(): Observable<MessageEvent> {
+  get realtimeEvents$(): Observable<RealtimeEventDto> {
     return this.eventsSubject.asObservable();
   }
 
@@ -350,11 +350,7 @@ export class GameEngineService implements OnModuleDestroy {
       occurredAt: new Date().toISOString(),
     };
 
-    this.eventsSubject.next({
-      id: String(event.sequence),
-      type,
-      data: event,
-    });
+    this.eventsSubject.next(event);
   }
 
   private toRoundDto(round: RoundRecord): RoundDto {

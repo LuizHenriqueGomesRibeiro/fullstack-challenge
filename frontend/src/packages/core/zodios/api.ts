@@ -9,10 +9,13 @@ import {
   type RoundHistoryItemDto,
   type WalletDto,
 } from '@crash/contracts'
-import { playerHeaders } from '../auth/oidc'
+import { playerHeaders } from '../hooks/auth/oidc'
 
 const env = import.meta.env
-const apiBaseUrl = env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const apiBaseUrl = (env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(
+  /\/$/,
+  '',
+)
 
 const eventMetadataSchema = z.record(
   z.string(),
@@ -186,6 +189,7 @@ export const realtimeEventSchema = z.object({
   occurredAt: z.string(),
 }) satisfies z.ZodType<RealtimeEventDto>
 
-export const realtimeEventsUrl = `${apiBaseUrl}/games/events`
+export const realtimeSocketUrl = apiBaseUrl
+export const realtimeSocketPath = '/games/socket.io'
 
 export { playerHeaders }

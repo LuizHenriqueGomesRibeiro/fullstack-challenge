@@ -1,6 +1,6 @@
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { useAuth } from '../packages/core/auth/auth-context'
+import { useAuth } from '../packages/core/hooks/auth'
 
 export function RootLayout() {
   const auth = useAuth()

@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { getRouter } from './router'
-import { AuthProvider } from './packages/core/auth/auth-context'
+import { AuthProvider } from './packages/core/hooks/auth'
 import TanstackQueryProvider from './packages/core/integrations/tanstack-query/root-provider'
 import './styles.css'
 

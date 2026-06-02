@@ -71,7 +71,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       void refreshStoredTokens()
         .catch(() => clearStoredTokens())
         .finally(() => setSnapshot(readAuthSnapshot()))
-    }, refreshDelay)
+    }, refreshDelay);
 
     return () => window.clearTimeout(refreshTimer)
   }, [snapshot.tokens])

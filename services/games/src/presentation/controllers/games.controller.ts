@@ -6,9 +6,7 @@ import {
   HttpException,
   Param,
   Post,
-  Sse,
 } from "@nestjs/common";
-import type { MessageEvent } from "@nestjs/common";
 import {
   DEFAULT_PLAYER_ID,
   DEFAULT_USERNAME,
@@ -22,7 +20,6 @@ import {
   type RoundHistoryItemDto,
   type RoundVerifyDto,
 } from "@crash/contracts";
-import type { Observable } from "rxjs";
 import { GameEngineService } from "../../application/game-engine.service";
 import { GameDomainError } from "../../domain/game.errors";
 import { HealthCheckResponseDto } from "../dtos/health-check-response.dto";
@@ -78,11 +75,6 @@ export class GamesController {
     return this.handleAsync(() =>
       this.gameEngine.cashout(playerId ?? DEFAULT_PLAYER_ID),
     );
-  }
-
-  @Sse("events")
-  events(): Observable<MessageEvent> {
-    return this.gameEngine.realtimeEvents$;
   }
 
   private handle<TResult>(operation: () => TResult): TResult {

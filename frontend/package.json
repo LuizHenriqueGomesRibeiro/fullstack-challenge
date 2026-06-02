@@ -19,8 +19,10 @@
     "@zodios/core": "^10.9.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "socket.io-client": "^4.8.1",
     "zod": "^4.4.3",
-    "zodios": "^5.1.0"
+    "zodios": "^5.1.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tanstack/router-cli": "^1.128.15",

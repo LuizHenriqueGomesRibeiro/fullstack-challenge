@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { io } from 'socket.io-client';
 import {
   formatCents,
   formatMultiplier,
@@ -11,12 +12,13 @@ import {
   type RealtimeEventDto,
   type RealtimeEventType,
 } from '@crash/contracts'
-import type { PlayerIdentity } from '../../auth/oidc';
+import type { PlayerIdentity } from '../auth/oidc';
 import {
   gamesApi,
   playerHeaders,
   realtimeEventSchema,
-  realtimeEventsUrl,
+  realtimeSocketPath,
+  realtimeSocketUrl,
   walletsApi,
 } from '../../zodios/api';
 import useUtil from '../util';
@@ -43,7 +45,6 @@ export default function useHome(player: PlayerIdentity) {
     invalidateGameQueries,
     isTickPayload,
     parseMoneyToCents,
-    safeJson,
     ...util
   } = useUtil();
 
@@ -150,10 +151,13 @@ export default function useHome(player: PlayerIdentity) {
   }, [])
 
   useEffect(() => {
-    const events = new EventSource(realtimeEventsUrl)
+    const socket = io(realtimeSocketUrl, {
+      path: realtimeSocketPath,
+      transports: ['websocket'],
+      withCredentials: true,
+    })
 
-    const handleEvent = (message: MessageEvent) => {
-      const rawEvent = safeJson(message.data)
+    const handleEvent = (rawEvent: unknown) => {
       const parsed = realtimeEventSchema.safeParse(rawEvent)
 
       if (!parsed.success) {
@@ -172,19 +176,26 @@ export default function useHome(player: PlayerIdentity) {
     }
 
     for (const type of realtimeTypes) {
-      events.addEventListener(type, handleEvent)
+      socket.on(type, handleEvent)
     }
 
-    events.onerror = () => {
-      setNotice('Stream em tempo real desconectado. Mantendo polling leve.')
-    }
+    socket.on('disconnect', () => {
+      setNotice('WebSocket em tempo real desconectado. Mantendo polling leve.')
+    })
+
+    socket.on('connect_error', () => {
+      setNotice('WebSocket em tempo real desconectado. Mantendo polling leve.')
+    })
 
     return () => {
+      socket.off('disconnect')
+      socket.off('connect_error')
+
       for (const type of realtimeTypes) {
-        events.removeEventListener(type, handleEvent)
+        socket.off(type, handleEvent)
       }
 
-      events.close()
+      socket.disconnect()
     }
   }, [player.id, queryClient])
 
