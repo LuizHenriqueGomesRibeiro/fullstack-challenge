@@ -1,0 +1,29 @@
+{
+  "name": "frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "generate-routes": "tsr generate",
+    "watch-routes": "tsr watch"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.128.15",
+    "@tanstack/react-router-devtools": "^1.128.15",
+    "@zodios/core": "^10.9.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zodios": "^5.1.0"
+  },
+  "devDependencies": {
+    "@tanstack/router-cli": "^1.128.15",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.4"
+  }
+}
