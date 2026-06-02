@@ -6,13 +6,13 @@ export function RootLayout() {
     <div className="shell">
       <main className="card">
         <div className="topline">
-          <div className="brand">TanStack Start</div>
+          <div className="brand">Jungle Crash</div>
           <nav className="nav">
             <Link to="/" activeProps={{ className: 'active' }}>
-              Home
+              Jogo
             </Link>
             <Link to="/about" activeProps={{ className: 'active' }}>
-              About
+              Arquitetura
             </Link>
           </nav>
         </div>
@@ -34,7 +34,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start',
+        title: 'Jungle Crash',
       },
     ],
   }),

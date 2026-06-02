@@ -11,11 +11,15 @@
     "watch-routes": "tsr watch"
   },
   "dependencies": {
+    "@crash/contracts": "workspace:*",
+    "@tanstack/react-query": "^5.100.14",
+    "@tanstack/react-query-devtools": "^5.100.14",
     "@tanstack/react-router": "^1.128.15",
     "@tanstack/react-router-devtools": "^1.128.15",
     "@zodios/core": "^10.9.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "zod": "^4.4.3",
     "zodios": "^5.1.0"
   },
   "devDependencies": {
