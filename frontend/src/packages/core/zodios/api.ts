@@ -1,10 +1,6 @@
 import { makeApi, Zodios } from '@zodios/core'
 import { z } from 'zod'
 import {
-  DEFAULT_PLAYER_ID,
-  DEFAULT_USERNAME,
-  PLAYER_ID_HEADER,
-  PLAYER_NAME_HEADER,
   type BetDto,
   type CashoutResultDto,
   type PlaceBetResultDto,
@@ -13,11 +9,10 @@ import {
   type RoundHistoryItemDto,
   type WalletDto,
 } from '@crash/contracts'
+import { playerHeaders } from '../auth/oidc'
 
 const env = import.meta.env
 const apiBaseUrl = env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-const playerId = env.VITE_PLAYER_ID ?? DEFAULT_PLAYER_ID
-const username = env.VITE_PLAYER_NAME ?? DEFAULT_USERNAME
 
 const eventMetadataSchema = z.record(
   z.string(),
@@ -193,14 +188,4 @@ export const realtimeEventSchema = z.object({
 
 export const realtimeEventsUrl = `${apiBaseUrl}/games/events`
 
-export function playerHeaders() {
-  return {
-    [PLAYER_ID_HEADER]: playerId,
-    [PLAYER_NAME_HEADER]: username,
-  }
-}
-
-export const demoPlayer = {
-  id: playerId,
-  username,
-}
+export { playerHeaders }

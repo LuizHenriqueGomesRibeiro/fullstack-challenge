@@ -104,10 +104,12 @@ code {
   flex-wrap: wrap;
 }
 
-.nav a {
+.nav a,
+.nav button {
   padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
+  background: transparent;
   color: var(--muted);
   transition:
     border-color 180ms ease,
@@ -115,7 +117,8 @@ code {
     transform 180ms ease;
 }
 
-.nav a:hover {
+.nav a:hover,
+.nav button:hover {
   transform: translateY(-1px);
 }
 
@@ -125,11 +128,48 @@ code {
   background: rgba(49, 230, 163, 0.1);
 }
 
+.nav-session {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .game-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 18px;
   padding: clamp(18px, 4vw, 34px);
+}
+
+.auth-panel {
+  display: grid;
+  gap: 18px;
+  min-height: 520px;
+  place-content: center;
+  padding: clamp(24px, 6vw, 72px);
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(49, 230, 163, 0.2), transparent 32%),
+    radial-gradient(circle at 78% 68%, rgba(238, 207, 114, 0.14), transparent 26%);
+}
+
+.auth-panel h1 {
+  max-width: 760px;
+  font-size: clamp(3rem, 8vw, 7.5rem);
+}
+
+.auth-panel .lede {
+  margin: 0 auto;
+}
+
+.auth-action {
+  display: inline-grid;
+  min-width: 220px;
+  place-items: center;
+  justify-self: center;
+  padding: 0 22px;
+  text-align: center;
 }
 
 .hero-board,

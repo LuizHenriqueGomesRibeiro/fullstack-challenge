@@ -1,7 +1,10 @@
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { useAuth } from '../packages/core/auth/auth-context'
 
 export function RootLayout() {
+  const auth = useAuth()
+
   return (
     <div className="shell">
       <main className="card">
@@ -14,6 +17,19 @@ export function RootLayout() {
             <Link to="/about" activeProps={{ className: 'active' }}>
               Arquitetura
             </Link>
+            {auth.status === 'authenticated' && auth.player ? (
+              <button className="nav-session" onClick={auth.logout} type="button">
+                Sair de {auth.player.username}
+              </button>
+            ) : (
+              <Link
+                activeProps={{ className: 'active' }}
+                search={{ returnTo: '/' }}
+                to="/login"
+              >
+                Entrar
+              </Link>
+            )}
           </nav>
         </div>
         <Outlet />

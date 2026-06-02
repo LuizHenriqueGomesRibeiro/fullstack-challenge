@@ -14,6 +14,8 @@ COPY frontend ./frontend
 WORKDIR /app/frontend
 
 ENV VITE_API_BASE_URL=http://localhost:8000
+ENV VITE_OIDC_CLIENT_ID=crash-game-client
+ENV VITE_OIDC_ISSUER=http://localhost:8080/realms/crash-game
 RUN /app/frontend/node_modules/.bin/vite build
 
 FROM oven/bun:1-alpine

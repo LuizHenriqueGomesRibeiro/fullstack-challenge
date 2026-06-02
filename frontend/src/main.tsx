@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { getRouter } from './router'
+import { AuthProvider } from './packages/core/auth/auth-context'
 import TanstackQueryProvider from './packages/core/integrations/tanstack-query/root-provider'
 import './styles.css'
 
@@ -15,9 +16,11 @@ if (!rootElement) {
 if (!rootElement.innerHTML) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <TanstackQueryProvider>
-        <RouterProvider router={router} />
-      </TanstackQueryProvider>
+      <AuthProvider>
+        <TanstackQueryProvider>
+          <RouterProvider router={router} />
+        </TanstackQueryProvider>
+      </AuthProvider>
     </React.StrictMode>,
   )
 }
