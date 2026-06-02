@@ -95,12 +95,14 @@ services:
   # ---------------------------------------------------------------------------
   games:
     build:
-      context: ./services/games
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/games/Dockerfile
     ports:
       - "4001:4001"
     env_file:
       - ./services/games/.env
+    environment:
+      WALLETS_URL: http://wallets:4002
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,8 +120,8 @@ services:
   # ---------------------------------------------------------------------------
   wallets:
     build:
-      context: ./services/wallets
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/wallets/Dockerfile
     ports:
       - "4002:4002"
     env_file:
@@ -139,14 +141,21 @@ services:
   # ---------------------------------------------------------------------------
   # Frontend (placeholder — candidate implements)
   # ---------------------------------------------------------------------------
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - kong
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      kong:
+        condition: service_healthy
+      games:
+        condition: service_healthy
+      wallets:
+        condition: service_healthy
 
 volumes:
   postgres_data:
