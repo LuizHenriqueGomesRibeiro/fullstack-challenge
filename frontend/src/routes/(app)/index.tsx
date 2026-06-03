@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAuth } from '../../packages/core/hooks/auth'
 import { useSocketInstance } from '../../packages/core/stores'
 import HomePage from '../../pages/home'
+import { AuthGate } from 'src/packages/ui'
 
 export const Route = createFileRoute('/(app)/')({
   component: HomeRoute,
@@ -28,19 +29,7 @@ function HomeRoute() {
   }, [auth.status, player, queryClient, socket])
 
   if (auth.status !== 'authenticated' || !player) {
-    return (
-      <section className="auth-panel">
-        <div className="eyebrow">Login OIDC / Keycloak</div>
-        <h1>Entre para jogar multiplayer.</h1>
-        <p className="lede">
-          Cada sessao usa o usuario autenticado no Keycloak para criar carteira,
-          apostar e fazer cashout com identidade propria.
-        </p>
-        <Link className="primary-action auth-action" search={{ returnTo: '/' }} to="/login">
-          Entrar com Keycloak
-        </Link>
-      </section>
-    )
+    return <AuthGate/>
   }
 
   return <HomePage player={player} />
