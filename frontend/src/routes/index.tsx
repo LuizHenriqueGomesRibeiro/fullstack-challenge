@@ -1,8 +1,17 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useAuth } from '../packages/core/hooks/auth';
 import { HomePage } from 'src/packages/ui/pages';
+import { useSocketInstance } from 'src/packages/core/stores';
 
 export const Route = createFileRoute('/')({
+  beforeLoad({ queryClient }) {
+    const auth = useAuth();
+    const player = auth.player;
+    
+    if (auth.status === 'authenticated' && player) {
+      useSocketInstance().connect(player, queryClient);
+    }
+  },
   component: () => {
     const auth = useAuth();
     const player = auth.player;
