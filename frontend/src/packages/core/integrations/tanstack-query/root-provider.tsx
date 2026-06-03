@@ -23,6 +23,8 @@ export function getContext() {
   }
 }
 
+export type RouterContext = ReturnType<typeof getContext>
+
 export default function TanstackQueryProvider({
   children,
 }: PropsWithChildren) {

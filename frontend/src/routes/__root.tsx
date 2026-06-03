@@ -1,6 +1,7 @@
-import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
+import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { useAuth } from '../packages/core/hooks/auth'
+import type { RouterContext } from '../packages/core/integrations/tanstack-query/root-provider'
 
 export function RootLayout() {
   const auth = useAuth()
@@ -39,7 +40,7 @@ export function RootLayout() {
   )
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       {

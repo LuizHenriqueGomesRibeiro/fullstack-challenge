@@ -1,17 +1,11 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../packages/core/hooks/auth';
-import { HomePage } from 'src/packages/ui/pages';
 import { useSocketInstance } from 'src/packages/core/stores';
+import { HomePage } from 'src/packages/ui/pages';
 
 export const Route = createFileRoute('/')({
-  beforeLoad({ queryClient }) {
-    const auth = useAuth();
-    const player = auth.player;
-    
-    if (auth.status === 'authenticated' && player) {
-      useSocketInstance().connect(player, queryClient);
-    }
-  },
+  pendingComponent: () => <>Carregando jogo</>,
   component: () => {
     const auth = useAuth();
     const player = auth.player;
@@ -29,6 +23,9 @@ export const Route = createFileRoute('/')({
         </Link>
       </section>
     }
+
+    const queryClient = useQueryClient();
+    useSocketInstance().connect(player, queryClient);
 
     return <HomePage player={player}/>
   }

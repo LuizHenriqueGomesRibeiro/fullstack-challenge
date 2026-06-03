@@ -1,22 +1,12 @@
 import { PlayerIdentity } from "src/packages/core/hooks/auth/oidc";
 import type { CSSProperties } from 'react';
-import {
-  useQueryClient,
-} from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
 import {
   formatCents,
   formatMultiplier,
   payoutForMultiplier,
   type RealtimeEventDto,
-  type RealtimeEventType,
 } from '@crash/contracts';
-import {
-  realtimeEventSchema,
-  realtimeSocketPath,
-  realtimeSocketUrl,
-} from '../../../core/zodios/api';
 import { 
   useBetsQuery, 
   useHistoryQuery, 
@@ -27,25 +17,12 @@ import {
 } from "src/packages/core/hooks";
 import { useCashoutMutation } from "src/packages/core/hooks/index";
 
-const realtimeTypes: RealtimeEventType[] = [
-  'round.created',
-  'round.started',
-  'round.tick',
-  'bet.placed',
-  'bet.cashout',
-  'round.crashed',
-  'wallet.updated',
-];
-
 export default function HomePage({ player }: { player: PlayerIdentity  }) {
-  const queryClient = useQueryClient();
   const [betAmount, setBetAmount] = useState('10,00');
   const [lastEvent, setLastEvent] = useState<RealtimeEventDto | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const {
     getErrorMessage,
-    invalidateGameQueries,
-    isTickPayload,
     parseMoneyToCents,
     phaseLabel,
     betStatusLabel,
@@ -61,61 +38,12 @@ export default function HomePage({ player }: { player: PlayerIdentity  }) {
     sortedBets, data: round, ownBet, reservedBet, phase, canCashout, bettingTimeLeftMs, liveMultiplierBp, graphProgress
   } = useRoundQuery(player);
 
-  const parsedBetAmountCents = parseMoneyToCents(betAmount)
+  const parsedBetAmountCents = parseMoneyToCents(betAmount);
   const canBet = phase === 'betting' && !ownBet && parsedBetAmountCents > 0
   const potentialPayout = reservedBet
     ? payoutForMultiplier(reservedBet.amountCents, liveMultiplierBp)
     : payoutForMultiplier(parsedBetAmountCents, liveMultiplierBp);
 
-  useEffect(() => {
-    const socket = io(realtimeSocketUrl, {
-      path: realtimeSocketPath,
-      transports: ['websocket'],
-      withCredentials: true,
-    })
-
-    const handleEvent = (rawEvent: unknown) => {
-      const parsed = realtimeEventSchema.safeParse(rawEvent)
-
-      if (!parsed.success) {
-        return
-      }
-
-      const event = parsed.data
-      setLastEvent(event)
-
-      if (event.type === 'round.tick' && isTickPayload(event.payload)) {
-        // setLiveMultiplierBp(event.payload.currentMultiplierBp)
-        return
-      }
-
-      void invalidateGameQueries(queryClient, player.id)
-    }
-
-    for (const type of realtimeTypes) {
-      socket.on(type, handleEvent)
-    }
-
-    socket.on('disconnect', () => {
-      setNotice('WebSocket em tempo real desconectado. Mantendo polling leve.')
-    })
-
-    socket.on('connect_error', () => {
-      setNotice('WebSocket em tempo real desconectado. Mantendo polling leve.')
-    })
-
-    return () => {
-      socket.off('disconnect')
-      socket.off('connect_error')
-
-      for (const type of realtimeTypes) {
-        socket.off(type, handleEvent)
-      }
-
-      socket.disconnect()
-    }
-  }, [player.id, queryClient]);
-  
   return <section className="game-grid">
     <div className="hero-board">
       <div className="board-copy">

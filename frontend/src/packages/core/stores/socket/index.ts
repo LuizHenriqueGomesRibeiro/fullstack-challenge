@@ -1,11 +1,11 @@
 import { realtimeEventSchema, realtimeSocketPath, realtimeSocketUrl } from "../../zodios/api";
-import { QueryClient } from "@tanstack/react-query";
-import { io } from "socket.io-client";
-import { create } from "zustand";
-import { useUtil } from "../../hooks";
+import { useRoundQueryOptions } from "../../hooks/roundQuery";
 import { PlayerIdentity } from "../../hooks/auth/oidc";
 import { RealtimeEventType } from "@crash/contracts";
-import { useRoundQueryOptions } from "../../hooks/roundQuery";
+import { QueryClient } from "@tanstack/react-query";
+import { io, Socket } from "socket.io-client";
+import { useUtil } from "../../hooks";
+import { create } from "zustand";
 
 const realtimeTypes: RealtimeEventType[] = [
   'round.created',
@@ -18,7 +18,7 @@ const realtimeTypes: RealtimeEventType[] = [
 ];
 
 interface SocketInstanceProps {
-  socket: WebSocket | null,
+  socket: Socket | null,
   isConnected: boolean,
   connect: (player: PlayerIdentity, queryClient: QueryClient) => void,
   disconnect: () => void
@@ -33,8 +33,6 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
       isTickPayload,
     } = useUtil();
 
-    const { isConnected, socket: currentSocket } = get();
-
     const socket = io(realtimeSocketUrl, {
       path: realtimeSocketPath,
       transports: ['websocket'],
@@ -42,7 +40,7 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
     });
 
     socket.on('connect', () => {
-      set({ isConnected: true });
+      set({ isConnected: true, socket });
     });
 
     const handleEvent = (rawEvent: unknown) => {
@@ -53,26 +51,28 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
       }
 
       const event = parsed.data;
+      const payload = event.payload;
 
-      if (event.type === 'round.tick' && isTickPayload(event.payload)) {
+      if (event.type === 'round.tick' && isTickPayload(payload)) {
         queryClient.setQueryData(
           useRoundQueryOptions().queryKey, (data) => {
-            const currentMultiplierBp = event.payload.currentMultiplierBp;
+            if (!data) return data;
+
             return {
-              currentMultiplierBp,
-              ...data
-            }
+              ...data,
+              currentMultiplierBp: payload.currentMultiplierBp,
+            } as typeof data;
           }
         );
         
         return;
       }
 
-      void invalidateGameQueries(queryClient, player.id)
+      void invalidateGameQueries(queryClient, player.id);
     }
 
     for (const type of realtimeTypes) {
-      socket.on(type, handleEvent)
+      socket.on(type, handleEvent);
     }
 
     socket.on('disconnect', () => {
