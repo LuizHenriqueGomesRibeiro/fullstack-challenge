@@ -1,8 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../packages/core/hooks/auth';
-import { useSocketInstance } from '../packages/core/stores';
-import { HomePage } from '../packages/ui/pages';
+import { useAuth } from '../../packages/core/hooks/auth';
+import { useSocketInstance } from '../../packages/core/stores';
+import { HomePage } from 'src/pages';
 
 export const Route = createFileRoute('/')({
   component: () => {

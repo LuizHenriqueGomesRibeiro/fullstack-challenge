@@ -11,7 +11,7 @@ import { formatCents, formatMultiplier, payoutForMultiplier } from "@crash/contr
 import { PlayerIdentity } from "src/packages/core/hooks/auth/oidc";
 import { useState } from "react";
 
-export default function HomePageController(player: PlayerIdentity) {
+export default function useHomePageController(player: PlayerIdentity) {
   const [betAmount, setBetAmount] = useState('10,00');
   const [notice, setNotice] = useState<string | null>(null);
   const {

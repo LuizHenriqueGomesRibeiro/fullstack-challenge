@@ -1,4 +1,3 @@
-import type { PlayerIdentity } from '../../../../packages/core/hooks/auth/oidc';
 import { formatMultiplier, formatCents } from '@crash/contracts';
 import HomePageController from './controller';
 import {
@@ -8,7 +7,8 @@ import {
   HomeBetsTable,
   HomeHeroBoard,
   HomeBetCard,
-} from '../../components';
+} from '../../packages/ui';
+import { PlayerIdentity } from 'src/packages/core/hooks/auth/oidc';
 
 export default function HomePage({ player }: { player: PlayerIdentity }) {
   const controller = HomePageController(player);
