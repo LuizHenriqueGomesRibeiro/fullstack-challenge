@@ -1,11 +1,9 @@
 import { PlayerIdentity } from "src/packages/core/hooks/auth/oidc";
 import type { CSSProperties } from 'react';
 import {
-  useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import {
   formatCents,
@@ -15,14 +13,12 @@ import {
   type RealtimeEventType,
 } from '@crash/contracts';
 import {
-  gamesApi,
-  playerHeaders,
   realtimeEventSchema,
   realtimeSocketPath,
   realtimeSocketUrl,
-  walletsApi,
 } from '../../../core/zodios/api';
-import { useUtil } from "src/packages/core/hooks";
+import { useBetsQuery, useHistoryQuery, usePlaceBetMutation, useRoundQuery, useUtil, useWalletQuery } from "src/packages/core/hooks";
+import { useCashoutMutation } from "src/packages/core/hooks/index";
 
 const realtimeTypes: RealtimeEventType[] = [
   'round.created',
@@ -37,8 +33,6 @@ const realtimeTypes: RealtimeEventType[] = [
 export default function HomePage({ player }: { player: PlayerIdentity  }) {
   const queryClient = useQueryClient();
   const [betAmount, setBetAmount] = useState('10,00');
-  const [liveMultiplierBp, setLiveMultiplierBp] = useState(100);
-  const [now, setNow] = useState(() => Date.now());
   const [lastEvent, setLastEvent] = useState<RealtimeEventDto | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const {
@@ -51,107 +45,20 @@ export default function HomePage({ player }: { player: PlayerIdentity  }) {
     eventLabel,
   } = useUtil();
 
-  const walletQuery = useQuery({
-    queryKey: ['wallet', player.id],
-    queryFn: async () => {
-      try {
-        return await walletsApi.getMyWallet({ headers: playerHeaders(player) })
-      } catch {
-        return walletsApi.createWallet(
-          { playerId: player.id, username: player.username },
-          { headers: playerHeaders(player) },
-        )
-      }
-    },
-  });
+  const placeBetMutation = usePlaceBetMutation(player);
+  const cashoutMutation = useCashoutMutation(player);
+  const walletQuery = useWalletQuery(player);
+  const betsQuery = useBetsQuery(player);
+  const historyQuery = useHistoryQuery();
+  const { 
+    sortedBets, data: round, ownBet, reservedBet, phase, canCashout, bettingTimeLeftMs, liveMultiplierBp, graphProgress
+  } = useRoundQuery(player);
 
-  const roundQuery = useQuery({
-    queryKey: ['round', 'current'],
-    queryFn: () => gamesApi.getCurrentRound(),
-    refetchInterval: 2_000,
-  });
-
-  const historyQuery = useQuery({
-    queryKey: ['rounds', 'history'],
-    queryFn: () => gamesApi.getRoundHistory(),
-  });
-
-  const betsQuery = useQuery({
-    queryKey: ['bets', player.id],
-    queryFn: () => gamesApi.getMyBets({ headers: playerHeaders(player) }),
-  });
-
-  const round = roundQuery.data
-  const ownBet = round?.bets.find((bet) => bet.playerId === player.id)
-  const reservedBet = ownBet?.status === 'reserved' ? ownBet : undefined
   const parsedBetAmountCents = parseMoneyToCents(betAmount)
-  const phase = round?.phase ?? 'betting'
   const canBet = phase === 'betting' && !ownBet && parsedBetAmountCents > 0
-  const canCashout = phase === 'running' && Boolean(reservedBet)
   const potentialPayout = reservedBet
     ? payoutForMultiplier(reservedBet.amountCents, liveMultiplierBp)
-    : payoutForMultiplier(parsedBetAmountCents, liveMultiplierBp)
-  const bettingTimeLeftMs = round
-    ? Math.max(0, Date.parse(round.bettingEndsAt) - now)
-    : 0
-  const graphProgress = Math.min(Math.max((liveMultiplierBp - 100) / 600, 0), 1)
-
-  const sortedBets = useMemo(
-    () =>
-      [...(round?.bets ?? [])].sort((left, right) => {
-        if (left.status === right.status) {
-          return right.placedAt.localeCompare(left.placedAt)
-        }
-
-        return left.status === 'reserved' ? -1 : 1
-      }),
-    [round?.bets],
-  )
-
-  const placeBetMutation = useMutation({
-    mutationFn: async () => {
-      if (parsedBetAmountCents < 100 || parsedBetAmountCents > 100_000) {
-        throw new Error('A aposta deve ficar entre R$ 1,00 e R$ 1.000,00.')
-      }
-
-      return gamesApi.placeBet(
-        {
-          amountCents: parsedBetAmountCents,
-          username: player.username,
-        },
-        { headers: playerHeaders(player) },
-      )
-    },
-    onSuccess: async (result) => {
-      setNotice(`Aposta reservada: ${formatCents(result.bet.amountCents)}.`)
-      await invalidateGameQueries(queryClient, player.id)
-    },
-    onError: (error) => setNotice(getErrorMessage(error)),
-  })
-
-  const cashoutMutation = useMutation({
-    mutationFn: () => gamesApi.cashout({}, { headers: playerHeaders(player) }),
-    onSuccess: async (result) => {
-      setNotice(
-        `Cashout em ${formatMultiplier(
-          result.bet.cashoutMultiplierBp ?? liveMultiplierBp,
-        )}: ${formatCents(result.bet.payoutCents ?? 0)}.`,
-      )
-      await invalidateGameQueries(queryClient, player.id)
-    },
-    onError: (error) => setNotice(getErrorMessage(error)),
-  })
-
-  useEffect(() => {
-    if (round) {
-      setLiveMultiplierBp(round.currentMultiplierBp)
-    }
-  }, [round])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 250)
-    return () => window.clearInterval(timer)
-  }, [])
+    : payoutForMultiplier(parsedBetAmountCents, liveMultiplierBp);
 
   useEffect(() => {
     const socket = io(realtimeSocketUrl, {
@@ -171,7 +78,7 @@ export default function HomePage({ player }: { player: PlayerIdentity  }) {
       setLastEvent(event)
 
       if (event.type === 'round.tick' && isTickPayload(event.payload)) {
-        setLiveMultiplierBp(event.payload.currentMultiplierBp)
+        // setLiveMultiplierBp(event.payload.currentMultiplierBp)
         return
       }
 
@@ -260,8 +167,12 @@ export default function HomePage({ player }: { player: PlayerIdentity  }) {
       <form
         className="bet-card"
         onSubmit={(event) => {
-          event.preventDefault()
-          void placeBetMutation.mutateAsync()
+          event.preventDefault();
+          void placeBetMutation.mutateAsync(parsedBetAmountCents)
+            .then(async (result) => {
+              setNotice(`Aposta reservada: ${formatCents(result.bet.amountCents)}.`);
+            })
+            .catch((error) => setNotice(getErrorMessage(error)));
         }}
       >
         <label htmlFor="bet-amount">Valor da aposta</label>
@@ -286,7 +197,17 @@ export default function HomePage({ player }: { player: PlayerIdentity  }) {
           className="cashout-action"
           disabled={!canCashout || cashoutMutation.isPending}
           type="button"
-          onClick={() => void cashoutMutation.mutateAsync()}
+          onClick={() => void cashoutMutation
+            .mutateAsync()
+            .then(async result => {
+              setNotice(
+                `Cashout em ${formatMultiplier(
+                  result.bet.cashoutMultiplierBp ?? liveMultiplierBp,
+                )}: ${formatCents(result.bet.payoutCents ?? 0)}.`,
+              )
+            })
+            .catch(error => setNotice(getErrorMessage(error)))
+          }
         >
           {cashoutMutation.isPending
             ? 'Sacando...'
