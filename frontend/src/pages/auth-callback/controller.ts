@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAuth } from '../../../core/hooks/auth'
-import { useUtil } from '../../../core/hooks'
+import { useAuth } from '../../packages/core/hooks/auth'
+import { useUtil } from '../../packages/core/hooks'
 
 export default function useAuthCallbackPageController() {
   const auth = useAuth()

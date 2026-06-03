@@ -8,105 +8,110 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './pages/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as IndexRouteImport } from './pages/home/router'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as appIndexRouteImport } from './routes/(app)/index'
+import { Route as appLoginIndexRouteImport } from './routes/(app)/login/index'
+import { Route as appAboutIndexRouteImport } from './routes/(app)/about/index'
+import { Route as appAuthCallbackIndexRouteImport } from './routes/(app)/auth/callback/index'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
+const appIndexRoute = appIndexRouteImport.update({
+  id: '/(app)/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
+const appLoginIndexRoute = appLoginIndexRouteImport.update({
+  id: '/(app)/login/',
+  path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const appAboutIndexRoute = appAboutIndexRouteImport.update({
+  id: '/(app)/about/',
+  path: '/about/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const appAuthCallbackIndexRoute = appAuthCallbackIndexRouteImport.update({
+  id: '/(app)/auth/callback/',
+  path: '/auth/callback/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
-  '/auth/callback': typeof AuthCallbackRoute
+  '/': typeof appIndexRoute
+  '/about/': typeof appAboutIndexRoute
+  '/login/': typeof appLoginIndexRoute
+  '/auth/callback/': typeof appAuthCallbackIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
-  '/auth/callback': typeof AuthCallbackRoute
+  '/': typeof appIndexRoute
+  '/about': typeof appAboutIndexRoute
+  '/login': typeof appLoginIndexRoute
+  '/auth/callback': typeof appAuthCallbackIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
-  '/auth/callback': typeof AuthCallbackRoute
+  '/(app)/': typeof appIndexRoute
+  '/(app)/about/': typeof appAboutIndexRoute
+  '/(app)/login/': typeof appLoginIndexRoute
+  '/(app)/auth/callback/': typeof appAuthCallbackIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/login' | '/auth/callback'
+  fullPaths: '/' | '/about/' | '/login/' | '/auth/callback/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/about' | '/login' | '/auth/callback'
-  id: '__root__' | '/' | '/about' | '/login' | '/auth/callback'
+  id:
+    | '__root__'
+    | '/(app)/'
+    | '/(app)/about/'
+    | '/(app)/login/'
+    | '/(app)/auth/callback/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
-  LoginRoute: typeof LoginRoute
-  AuthCallbackRoute: typeof AuthCallbackRoute
+  appIndexRoute: typeof appIndexRoute
+  appAboutIndexRoute: typeof appAboutIndexRoute
+  appLoginIndexRoute: typeof appLoginIndexRoute
+  appAuthCallbackIndexRoute: typeof appAuthCallbackIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
+    '/(app)/': {
+      id: '/(app)/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof appIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
+    '/(app)/login/': {
+      id: '/(app)/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof appLoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(app)/about/': {
+      id: '/(app)/about/'
+      path: '/about'
+      fullPath: '/about/'
+      preLoaderRoute: typeof appAboutIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(app)/auth/callback/': {
+      id: '/(app)/auth/callback/'
       path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
+      fullPath: '/auth/callback/'
+      preLoaderRoute: typeof appAuthCallbackIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
-  LoginRoute: LoginRoute,
-  AuthCallbackRoute: AuthCallbackRoute,
+  appIndexRoute: appIndexRoute,
+  appAboutIndexRoute: appAboutIndexRoute,
+  appLoginIndexRoute: appLoginIndexRoute,
+  appAuthCallbackIndexRoute: appAuthCallbackIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

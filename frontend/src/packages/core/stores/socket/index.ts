@@ -39,6 +39,8 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
       withCredentials: true,
     });
 
+    set({ socket, isConnected: false });
+
     socket.on('connect', () => {
       set({ isConnected: true, socket });
     });
@@ -80,6 +82,7 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
     });
   },
   disconnect: () => {
+    get().socket?.disconnect();
     set({ socket: null, isConnected: false });
   }
 }));
