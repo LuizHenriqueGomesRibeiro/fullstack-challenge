@@ -13,9 +13,13 @@ const realtimeTypes: RealtimeEventType[] = [
   'round.tick',
   'bet.placed',
   'bet.cashout',
+  'bet.rejected',
   'round.crashed',
+  'events.replay',
   'wallet.updated',
 ];
+
+const LAST_SEQUENCE_KEY = 'crash.socket.last-sequence';
 
 interface SocketInstanceProps {
   socket: Socket | null,
@@ -34,6 +38,9 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
     } = useUtil();
 
     const socket = io(realtimeSocketUrl, {
+      auth: {
+        lastSequence: readLastSequence(),
+      },
       path: realtimeSocketPath,
       transports: ['websocket'],
       withCredentials: true,
@@ -53,6 +60,17 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
       }
 
       const event = parsed.data;
+
+      if (event.type === 'events.replay' && isReplayPayload(event.payload)) {
+        for (const replayedEvent of event.payload.events) {
+          handleEvent(replayedEvent);
+        }
+
+        storeLastSequence(event.sequence);
+        return;
+      }
+
+      storeLastSequence(event.sequence);
       const payload = event.payload;
 
       if (event.type === 'round.tick' && isTickPayload(payload)) {
@@ -88,3 +106,25 @@ const useSocketInstance = create<SocketInstanceProps>((set, get) => ({
 }));
 
 export default useSocketInstance; 
+
+function readLastSequence() {
+  const parsed = Number(localStorage.getItem(LAST_SEQUENCE_KEY));
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function storeLastSequence(sequence: number) {
+  if (Number.isSafeInteger(sequence) && sequence >= 0) {
+    localStorage.setItem(LAST_SEQUENCE_KEY, String(sequence));
+  }
+}
+
+function isReplayPayload(
+  payload: unknown,
+): payload is { events: unknown[] } {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'events' in payload &&
+    Array.isArray(payload.events)
+  );
+}

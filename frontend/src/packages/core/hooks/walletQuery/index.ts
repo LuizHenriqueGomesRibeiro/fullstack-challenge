@@ -10,7 +10,7 @@ function walletQueryOptions(player: PlayerIdentity) {
         return await walletsApi.getMyWallet({ headers: playerHeaders(player) })
       } catch {
         return walletsApi.createWallet(
-          { playerId: player.id, username: player.username },
+          { username: player.username },
           { headers: playerHeaders(player) },
         )
       }

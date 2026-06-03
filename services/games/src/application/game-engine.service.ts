@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import {
   DEFAULT_PLAYER_ID,
   DEFAULT_USERNAME,
@@ -12,9 +12,10 @@ import {
   type RoundHistoryItemDto,
   type RoundVerifyDto,
   type WalletCommandDto,
+  type WalletCommandOutcomeDto,
   isPositiveInteger,
 } from "@crash/contracts";
-import { Subject, type Observable } from "rxjs";
+import { Subject, type Observable, type Subscription } from "rxjs";
 import { randomUUID } from "node:crypto";
 import {
   bettingClosed,
@@ -24,27 +25,22 @@ import {
   roundNotFound,
   walletRejected,
 } from "../domain/game.errors";
+import { createProvablyFairRound } from "../domain/provably-fair";
 import {
-  createProvablyFairRound,
-  type ProvablyFairResult,
-} from "../domain/provably-fair";
+  GAME_REPOSITORY,
+  type GameRepository,
+  type RoundRecord,
+} from "../infrastructure/game.repository";
 import {
   WalletsClientError,
-  WalletsHttpClient,
-} from "../infrastructure/wallets-http.client";
+  WalletsEventsClient,
+} from "../infrastructure/wallets-events.client";
 
 const MIN_BET_CENTS = 100;
 const MAX_BET_CENTS = 100_000;
 
-interface RoundRecord extends RoundDto {
-  serverSeed: string;
-  hmac: string;
-  crashPointBp: number;
-  bets: BetDto[];
-}
-
 @Injectable()
-export class GameEngineService implements OnModuleDestroy {
+export class GameEngineService implements OnModuleInit, OnModuleDestroy {
   private readonly eventsSubject = new Subject<RealtimeEventDto>();
   private readonly bettingWindowMs = readIntegerEnv("BETTING_WINDOW_MS", 10_000);
   private readonly postCrashDelayMs = readIntegerEnv("POST_CRASH_DELAY_MS", 3_000);
@@ -55,43 +51,79 @@ export class GameEngineService implements OnModuleDestroy {
   );
   private readonly clientSeed = process.env.CRASH_CLIENT_SEED ?? "jungle-demo";
 
-  private currentRound: RoundRecord;
+  private currentRound?: RoundRecord;
   private nonce = 0;
   private sequence = 0;
   private roundStartTimer?: ReturnType<typeof setTimeout>;
   private tickTimer?: ReturnType<typeof setInterval>;
   private nextRoundTimer?: ReturnType<typeof setTimeout>;
+  private walletOutcomeSubscription?: Subscription;
+  private readonly eventBuffer: RealtimeEventDto[] = [];
   private readonly history: RoundHistoryItemDto[] = [];
-  private readonly betHistory: BetDto[] = [];
 
-  constructor(private readonly walletsClient: WalletsHttpClient) {
-    this.currentRound = this.createNextRound();
-  }
+  constructor(
+    private readonly walletsClient: WalletsEventsClient,
+    @Inject(GAME_REPOSITORY)
+    private readonly gameRepository: GameRepository,
+  ) {}
 
   get realtimeEvents$(): Observable<RealtimeEventDto> {
     return this.eventsSubject.asObservable();
   }
 
+  get currentSequence(): number {
+    return this.sequence;
+  }
+
+  getEventsAfter(sequence: number): RealtimeEventDto[] {
+    return this.eventBuffer
+      .filter((event) => event.sequence > sequence)
+      .map((event) => ({ ...event }));
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.gameRepository.migrate();
+    this.walletOutcomeSubscription = this.walletsClient.outcomes$.subscribe(
+      (outcome) => {
+        void this.applyWalletOutcome(outcome);
+      },
+    );
+
+    const latestRound = await this.gameRepository.loadLatestRound();
+    const history = await this.gameRepository.listHistory(20);
+    this.history.splice(0, this.history.length, ...history);
+
+    if (latestRound) {
+      this.nonce = latestRound.nonce;
+    }
+
+    if (latestRound && latestRound.phase !== "crashed") {
+      this.currentRound = latestRound;
+      await this.restoreRoundTimers();
+      return;
+    }
+
+    this.currentRound = await this.createNextRound();
+  }
+
   onModuleDestroy(): void {
     this.clearTimers();
+    this.walletOutcomeSubscription?.unsubscribe();
     this.eventsSubject.complete();
   }
 
   getCurrentRound(): RoundDto {
+    const round = this.requireCurrentRound();
     this.refreshCurrentMultiplier();
-    return this.toRoundDto(this.currentRound);
+    return this.toRoundDto(round);
   }
 
   getHistory(): RoundHistoryItemDto[] {
     return this.history.slice(0, 20).map((round) => ({ ...round }));
   }
 
-  getBetHistory(playerId = DEFAULT_PLAYER_ID): BetDto[] {
-    return this.betHistory
-      .filter((bet) => bet.playerId === playerId)
-      .slice()
-      .reverse()
-      .map((bet) => ({ ...bet }));
+  async getBetHistory(playerId = DEFAULT_PLAYER_ID): Promise<BetDto[]> {
+    return this.gameRepository.listBetHistory(playerId);
   }
 
   verifyRound(roundId: string): RoundVerifyDto {
@@ -114,7 +146,7 @@ export class GameEngineService implements OnModuleDestroy {
     playerId = DEFAULT_PLAYER_ID,
     username = DEFAULT_USERNAME,
   ): Promise<PlaceBetResultDto> {
-    const round = this.currentRound;
+    const round = this.requireCurrentRound();
 
     if (round.phase !== "betting") {
       throw bettingClosed();
@@ -128,7 +160,11 @@ export class GameEngineService implements OnModuleDestroy {
       throw invalidBetAmount();
     }
 
-    if (round.bets.some((bet) => bet.playerId === playerId)) {
+    if (
+      round.bets.some(
+        (bet) => bet.playerId === playerId && bet.status !== "rejected",
+      )
+    ) {
       throw duplicatedBet();
     }
 
@@ -138,11 +174,14 @@ export class GameEngineService implements OnModuleDestroy {
       playerId,
       username: request.username?.trim() || username,
       amountCents: request.amountCents,
-      status: "reserved",
+      status: "pending",
       placedAt: new Date().toISOString(),
     };
 
-    const wallet = await this.executeWalletCommand({
+    round.bets.push(bet);
+    await this.gameRepository.insertBet(bet);
+
+    const command: WalletCommandDto = {
       idempotencyKey: `bet:${round.id}:${playerId}`,
       playerId,
       username: bet.username,
@@ -154,25 +193,35 @@ export class GameEngineService implements OnModuleDestroy {
         betId: bet.id,
         roundId: round.id,
       },
-    });
+    };
+    const outcome = await this.executeWalletCommand(command);
 
-    round.bets.push(bet);
-    this.betHistory.push(bet);
-    this.emit("bet.placed", { bet, wallet: wallet.wallet });
-    this.emit("wallet.updated", wallet.wallet);
+    if (!outcome.accepted) {
+      await this.rejectBet(
+        bet,
+        outcome.rejectionCode,
+        outcome.rejectionMessage,
+      );
+      throw walletRejected(outcome.rejectionMessage, outcome.rejectionCode);
+    }
 
-    return { bet: { ...bet }, wallet: wallet.wallet };
+    if (bet.status !== "reserved") {
+      bet.status = "reserved";
+      await this.gameRepository.updateBet(bet);
+      this.emit("bet.placed", { bet: { ...bet }, wallet: outcome.wallet });
+      this.emit("wallet.updated", outcome.wallet);
+    }
+
+    return { bet: { ...bet }, wallet: outcome.wallet };
   }
 
-  async cashout(
-    playerId = DEFAULT_PLAYER_ID,
-  ): Promise<CashoutResultDto> {
-    const round = this.currentRound;
+  async cashout(playerId = DEFAULT_PLAYER_ID): Promise<CashoutResultDto> {
+    const round = this.requireCurrentRound();
     this.refreshCurrentMultiplier();
 
     if (round.phase !== "running" || round.currentMultiplierBp >= round.crashPointBp) {
       if (round.phase === "running") {
-        this.crashRound();
+        await this.crashRound();
       }
 
       throw cashoutUnavailable();
@@ -191,8 +240,7 @@ export class GameEngineService implements OnModuleDestroy {
       bet.amountCents,
       round.currentMultiplierBp,
     );
-
-    const wallet = await this.executeWalletCommand({
+    const command: WalletCommandDto = {
       idempotencyKey: `cashout:${round.id}:${playerId}`,
       playerId,
       username: bet.username,
@@ -205,20 +253,62 @@ export class GameEngineService implements OnModuleDestroy {
         roundId: round.id,
         multiplierBp: round.currentMultiplierBp,
       },
-    });
+    };
+    const outcome = await this.executeWalletCommand(command);
 
-    bet.status = "cashed_out";
-    bet.cashoutAt = new Date().toISOString();
-    bet.cashoutMultiplierBp = round.currentMultiplierBp;
-    bet.payoutCents = payoutCents;
+    if (!outcome.accepted) {
+      throw walletRejected(outcome.rejectionMessage, outcome.rejectionCode);
+    }
 
-    this.emit("bet.cashout", { bet, wallet: wallet.wallet });
-    this.emit("wallet.updated", wallet.wallet);
+    if (bet.status !== "cashed_out") {
+      bet.status = "cashed_out";
+      bet.cashoutAt = new Date().toISOString();
+      bet.cashoutMultiplierBp = round.currentMultiplierBp;
+      bet.payoutCents = payoutCents;
+      await this.gameRepository.updateBet(bet);
 
-    return { bet: { ...bet }, wallet: wallet.wallet };
+      this.emit("bet.cashout", { bet: { ...bet }, wallet: outcome.wallet });
+      this.emit("wallet.updated", outcome.wallet);
+    }
+
+    return { bet: { ...bet }, wallet: outcome.wallet };
   }
 
-  private createNextRound(): RoundRecord {
+  private async restoreRoundTimers(): Promise<void> {
+    const round = this.requireCurrentRound();
+
+    this.clearTimers();
+
+    if (round.phase === "betting") {
+      const remainingMs = Date.parse(round.bettingEndsAt) - Date.now();
+
+      if (remainingMs > 0) {
+        this.roundStartTimer = setTimeout(() => {
+          void this.startRound();
+        }, remainingMs);
+        return;
+      }
+
+      await this.startRound();
+      return;
+    }
+
+    if (round.phase === "running") {
+      this.refreshCurrentMultiplier();
+
+      if (round.currentMultiplierBp >= round.crashPointBp) {
+        await this.crashRound();
+        return;
+      }
+
+      await this.gameRepository.updateRound(round);
+      this.tickTimer = setInterval(() => {
+        void this.tickRound();
+      }, this.tickMs);
+    }
+  }
+
+  private async createNextRound(): Promise<RoundRecord> {
     this.clearTimers();
 
     const fairRound = createProvablyFairRound(this.clientSeed, ++this.nonce);
@@ -237,16 +327,16 @@ export class GameEngineService implements OnModuleDestroy {
       bets: [],
     };
 
-    this.roundStartTimer = setTimeout(
-      () => this.startRound(),
-      this.bettingWindowMs,
-    );
+    await this.gameRepository.saveRound(round);
+    this.roundStartTimer = setTimeout(() => {
+      void this.startRound();
+    }, this.bettingWindowMs);
     this.emit("round.created", this.toRoundDto(round));
     return round;
   }
 
-  private startRound(): void {
-    const round = this.currentRound;
+  private async startRound(): Promise<void> {
+    const round = this.requireCurrentRound();
 
     if (round.phase !== "betting") {
       return;
@@ -255,14 +345,17 @@ export class GameEngineService implements OnModuleDestroy {
     round.phase = "running";
     round.startedAt = new Date().toISOString();
     round.currentMultiplierBp = 100;
+    await this.gameRepository.updateRound(round);
     this.emit("round.started", this.toRoundDto(round));
 
-    this.tickTimer = setInterval(() => this.tickRound(), this.tickMs);
-    this.tickRound();
+    this.tickTimer = setInterval(() => {
+      void this.tickRound();
+    }, this.tickMs);
+    await this.tickRound();
   }
 
-  private tickRound(): void {
-    const round = this.currentRound;
+  private async tickRound(): Promise<void> {
+    const round = this.requireCurrentRound();
 
     if (round.phase !== "running") {
       return;
@@ -275,12 +368,12 @@ export class GameEngineService implements OnModuleDestroy {
     });
 
     if (round.currentMultiplierBp >= round.crashPointBp) {
-      this.crashRound();
+      await this.crashRound();
     }
   }
 
-  private crashRound(): void {
-    const round = this.currentRound;
+  private async crashRound(): Promise<void> {
+    const round = this.requireCurrentRound();
 
     if (round.phase === "crashed") {
       return;
@@ -296,11 +389,13 @@ export class GameEngineService implements OnModuleDestroy {
     round.crashedAt = new Date().toISOString();
 
     for (const bet of round.bets) {
-      if (bet.status === "reserved") {
+      if (bet.status === "reserved" || bet.status === "pending") {
         bet.status = "lost";
+        await this.gameRepository.updateBet(bet);
       }
     }
 
+    await this.gameRepository.updateRound(round);
     const historyItem = this.toHistoryItem(round);
     this.history.unshift(historyItem);
     this.history.splice(20);
@@ -310,12 +405,14 @@ export class GameEngineService implements OnModuleDestroy {
     });
 
     this.nextRoundTimer = setTimeout(() => {
-      this.currentRound = this.createNextRound();
+      void this.createNextRound().then((nextRound) => {
+        this.currentRound = nextRound;
+      });
     }, this.postCrashDelayMs);
   }
 
   private refreshCurrentMultiplier(): void {
-    const round = this.currentRound;
+    const round = this.requireCurrentRound();
 
     if (round.phase !== "running" || !round.startedAt) {
       return;
@@ -327,16 +424,92 @@ export class GameEngineService implements OnModuleDestroy {
     round.currentMultiplierBp = Math.min(nextMultiplier, round.crashPointBp);
   }
 
-  private async executeWalletCommand(command: WalletCommandDto) {
+  private async executeWalletCommand(
+    command: WalletCommandDto,
+  ): Promise<WalletCommandOutcomeDto> {
     try {
       return await this.walletsClient.executeCommand(command);
     } catch (error) {
       if (error instanceof WalletsClientError) {
-        throw walletRejected(error.message, error.code);
+        throw walletRejected(
+          "Wallet command did not finish before the timeout.",
+          error.code,
+        );
       }
 
       throw error;
     }
+  }
+
+  private async applyWalletOutcome(
+    outcome: WalletCommandOutcomeDto,
+  ): Promise<void> {
+    const metadata = outcome.accepted
+      ? outcome.ledgerEntry.metadata
+      : outcome.metadata;
+    const betId =
+      typeof metadata.betId === "string" ? metadata.betId : undefined;
+
+    if (!betId) {
+      return;
+    }
+
+    const bet = this.findLoadedBet(betId) ?? (await this.gameRepository.findBet(betId));
+
+    if (!bet) {
+      return;
+    }
+
+    if (!outcome.accepted) {
+      if (bet.status === "pending") {
+        await this.rejectBet(bet, outcome.rejectionCode, outcome.rejectionMessage);
+      }
+
+      return;
+    }
+
+    if (outcome.ledgerEntry.reason === "bet_placed" && bet.status === "pending") {
+      bet.status = "reserved";
+      await this.gameRepository.updateBet(bet);
+      this.replaceLoadedBet(bet);
+      this.emit("bet.placed", { bet: { ...bet }, wallet: outcome.wallet });
+      this.emit("wallet.updated", outcome.wallet);
+      return;
+    }
+
+    if (
+      outcome.ledgerEntry.reason === "cashout_payout" &&
+      bet.status === "reserved"
+    ) {
+      const multiplierBp =
+        typeof metadata.multiplierBp === "number"
+          ? metadata.multiplierBp
+          : this.requireCurrentRound().currentMultiplierBp;
+
+      bet.status = "cashed_out";
+      bet.cashoutAt = new Date().toISOString();
+      bet.cashoutMultiplierBp = multiplierBp;
+      bet.payoutCents = outcome.ledgerEntry.amountCents;
+      await this.gameRepository.updateBet(bet);
+      this.replaceLoadedBet(bet);
+      this.emit("bet.cashout", { bet: { ...bet }, wallet: outcome.wallet });
+      this.emit("wallet.updated", outcome.wallet);
+    }
+  }
+
+  private async rejectBet(
+    bet: BetDto,
+    code: string,
+    message: string,
+  ): Promise<void> {
+    bet.status = "rejected";
+    await this.gameRepository.updateBet(bet);
+    this.replaceLoadedBet(bet);
+    this.emit("bet.rejected", {
+      bet: { ...bet },
+      code,
+      message,
+    });
   }
 
   private emit<TPayload>(
@@ -350,6 +523,8 @@ export class GameEngineService implements OnModuleDestroy {
       occurredAt: new Date().toISOString(),
     };
 
+    this.eventBuffer.push(event);
+    this.eventBuffer.splice(0, Math.max(0, this.eventBuffer.length - 500));
     this.eventsSubject.next(event);
   }
 
@@ -381,6 +556,32 @@ export class GameEngineService implements OnModuleDestroy {
       startedAt: round.startedAt ?? round.bettingEndsAt,
       crashedAt: round.crashedAt ?? new Date().toISOString(),
     };
+  }
+
+  private findLoadedBet(betId: string): BetDto | undefined {
+    return this.currentRound?.bets.find((bet) => bet.id === betId);
+  }
+
+  private replaceLoadedBet(bet: BetDto): void {
+    if (!this.currentRound || this.currentRound.id !== bet.roundId) {
+      return;
+    }
+
+    const index = this.currentRound.bets.findIndex(
+      (candidate) => candidate.id === bet.id,
+    );
+
+    if (index >= 0) {
+      this.currentRound.bets[index] = { ...bet };
+    }
+  }
+
+  private requireCurrentRound(): RoundRecord {
+    if (!this.currentRound) {
+      throw new Error("Game engine has not been initialized.");
+    }
+
+    return this.currentRound;
   }
 
   private clearTimers(): void {

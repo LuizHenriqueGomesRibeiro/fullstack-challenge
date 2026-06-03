@@ -16,7 +16,7 @@ Um **Crash Game** é um jogo de cassino multiplayer em tempo real: um multiplica
 
 Você deve construir o **backend** (engine do jogo, carteira, comunicação em tempo real) e o **frontend** (UI com animações, interface de apostas, histórico).
 
-**Autenticação não faz parte do escopo.** O projeto já vem com Keycloak configurado — fique à vontade para substituí-lo por Auth0 ou Okta se preferir.
+**Autenticação faz parte da entrega.** O projeto já vem com Keycloak configurado e os backends devem validar JWTs emitidos pelo IdP; fique à vontade para substituí-lo por Auth0 ou Okta se preferir.
 
 ---
 
@@ -114,6 +114,10 @@ Responsável pela carteira do jogador: saldo, operações de crédito e débito.
 Game e Wallet se comunicam **assincronamente via RabbitMQ/SQS**. Você deve projetar os eventos, fluxos e estratégias de compensação necessários para garantir consistência entre os serviços.
 
 O design dessa comunicação é **parte central da avaliação**.
+
+**Implementação atual:** os serviços usam PostgreSQL para persistência, RabbitMQ para comandos/resultados de carteira e tabelas de outbox/inbox para retry e idempotência. O Game publica comandos `wallet.command`, a Wallet consome, persiste ledger com idempotência e publica `wallet.command.result`; o Game consome o resultado e atualiza a aposta.
+
+As APIs expõem Swagger/OpenAPI em `/games/docs` e `/wallets/docs` via Kong, ou `/docs` nas portas diretas dos serviços.
 
 ---
 

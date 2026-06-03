@@ -1,13 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import { WalletsService } from "../../src/application/wallets.service";
 import { WalletDomainError } from "../../src/domain/wallet.errors";
+import { InMemoryWalletsRepository } from "../../src/infrastructure/wallets.repository";
 
 describe("WalletsService", () => {
-  it("debits and credits integer cents with idempotency", () => {
-    const service = new WalletsService();
-    const wallet = service.createWallet({ playerId: "p1", username: "neo" });
+  it("debits and credits integer cents with idempotency", async () => {
+    const service = createService();
+    const wallet = await service.createWallet({ playerId: "p1", username: "neo" });
 
-    const debit = service.executeCommand({
+    const debit = await service.executeCommand({
       idempotencyKey: "bet:p1:1",
       playerId: wallet.playerId,
       type: "debit",
@@ -18,7 +19,7 @@ describe("WalletsService", () => {
 
     expect(debit.wallet.balanceCents).toBe(wallet.balanceCents - 1_000);
 
-    const repeatedDebit = service.executeCommand({
+    const repeatedDebit = await service.executeCommand({
       idempotencyKey: "bet:p1:1",
       playerId: wallet.playerId,
       type: "debit",
@@ -30,7 +31,7 @@ describe("WalletsService", () => {
     expect(repeatedDebit.idempotent).toBe(true);
     expect(repeatedDebit.wallet.balanceCents).toBe(debit.wallet.balanceCents);
 
-    const credit = service.executeCommand({
+    const credit = await service.executeCommand({
       idempotencyKey: "cashout:p1:1",
       playerId: wallet.playerId,
       type: "credit",
@@ -42,11 +43,11 @@ describe("WalletsService", () => {
     expect(credit.wallet.balanceCents).toBe(debit.wallet.balanceCents + 1_750);
   });
 
-  it("rejects debits that would make balance negative", () => {
-    const service = new WalletsService();
-    service.createWallet({ playerId: "p2", username: "trinity" });
+  it("rejects debits that would make balance negative", async () => {
+    const service = createService();
+    await service.createWallet({ playerId: "p2", username: "trinity" });
 
-    expect(() =>
+    await expect(
       service.executeCommand({
         idempotencyKey: "bet:p2:too-big",
         playerId: "p2",
@@ -55,6 +56,10 @@ describe("WalletsService", () => {
         amountCents: 9_999_999,
         correlationId: "bet-too-big",
       }),
-    ).toThrow(WalletDomainError);
+    ).rejects.toThrow(WalletDomainError);
   });
 });
+
+function createService(): WalletsService {
+  return new WalletsService(new InMemoryWalletsRepository());
+}

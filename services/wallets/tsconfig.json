@@ -15,7 +15,7 @@
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["bun-types"],
+    "types": ["bun-types", "node"],
     "paths": {
       "@/*": ["./src/*"],
       "@crash/contracts": ["../../packages/contracts/src/index.ts"]

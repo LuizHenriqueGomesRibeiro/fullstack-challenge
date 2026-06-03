@@ -74,6 +74,14 @@ export default function useUtil() {
     if (status === 'lost') {
       return 'perdeu'
     }
+
+    if (status === 'pending') {
+      return 'pendente'
+    }
+
+    if (status === 'rejected') {
+      return 'rejeitada'
+    }
   
     return 'ativa'
   }

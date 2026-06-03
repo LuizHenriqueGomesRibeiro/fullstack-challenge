@@ -1,8 +1,6 @@
 import {
   DEFAULT_PLAYER_ID,
   DEFAULT_USERNAME,
-  PLAYER_ID_HEADER,
-  PLAYER_NAME_HEADER,
 } from '@crash/contracts'
 
 const env = import.meta.env
@@ -205,12 +203,9 @@ export function getFallbackPlayer(): PlayerIdentity {
   }
 }
 
-export function playerHeaders(player = getAuthenticatedPlayer() ?? getFallbackPlayer()) {
+export function playerHeaders(_player = getAuthenticatedPlayer() ?? getFallbackPlayer()) {
   const tokenSet = getStoredTokenSet()
-  const headers: Record<string, string> = {
-    [PLAYER_ID_HEADER]: player.id,
-    [PLAYER_NAME_HEADER]: player.username,
-  }
+  const headers: Record<string, string> = {}
 
   if (tokenSet?.accessToken) {
     headers.Authorization = `${tokenSet.tokenType} ${tokenSet.accessToken}`

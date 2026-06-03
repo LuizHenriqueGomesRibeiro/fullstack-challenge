@@ -8,7 +8,12 @@ export type Cents = number;
 export type MultiplierBasisPoints = number;
 
 export type RoundPhase = "betting" | "running" | "crashed";
-export type BetStatus = "reserved" | "cashed_out" | "lost";
+export type BetStatus =
+  | "pending"
+  | "reserved"
+  | "cashed_out"
+  | "lost"
+  | "rejected";
 
 export type WalletCommandType = "debit" | "credit";
 export type WalletCommandReason =
@@ -53,11 +58,27 @@ export interface WalletCommandDto {
 }
 
 export interface WalletCommandResultDto {
-  accepted: boolean;
+  accepted: true;
   idempotent: boolean;
   wallet: WalletDto;
   ledgerEntry: WalletLedgerEntryDto;
 }
+
+export interface WalletCommandRejectedDto {
+  accepted: false;
+  idempotent: boolean;
+  idempotencyKey: string;
+  playerId: string;
+  rejectionCode: string;
+  rejectionMessage: string;
+  correlationId: string;
+  metadata: EventMetadata;
+  occurredAt: string;
+}
+
+export type WalletCommandOutcomeDto =
+  | WalletCommandResultDto
+  | WalletCommandRejectedDto;
 
 export interface CreateWalletRequestDto {
   playerId?: string;
@@ -128,13 +149,27 @@ export interface ErrorResponseDto {
   message: string;
 }
 
+export interface AuthenticatedPlayerDto {
+  playerId: string;
+  username: string;
+  subject: string;
+}
+
+export const WALLET_COMMAND_QUEUE = "wallet.commands";
+export const WALLET_COMMAND_RESULT_QUEUE = "wallet.command-results";
+export const WALLET_COMMAND_EXCHANGE = "crash.wallet";
+export const WALLET_COMMAND_ROUTING_KEY = "wallet.command";
+export const WALLET_COMMAND_RESULT_ROUTING_KEY = "wallet.command.result";
+
 export type RealtimeEventType =
   | "round.created"
   | "round.started"
   | "round.tick"
   | "bet.placed"
   | "bet.cashout"
+  | "bet.rejected"
   | "round.crashed"
+  | "events.replay"
   | "wallet.updated";
 
 export interface RealtimeEventDto<TPayload = unknown> {

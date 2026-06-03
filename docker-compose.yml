@@ -54,7 +54,7 @@ services:
     volumes:
       - ./docker/keycloak:/opt/keycloak/data/import:ro
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200\" <&3'"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -77,6 +77,10 @@ services:
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DNS_RESOLVER: 127.0.0.11
+      KONG_DNS_STALE_TTL: 0
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_DNS_ERROR_TTL: 1
     volumes:
       - ./docker/kong:/kong:ro
     healthcheck:
@@ -88,6 +92,10 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      games:
+        condition: service_healthy
+      wallets:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
@@ -102,7 +110,8 @@ services:
     env_file:
       - ./services/games/.env
     environment:
-      WALLETS_URL: http://wallets:4002
+      OIDC_ISSUER: http://localhost:8080/realms/crash-game
+      OIDC_JWKS_URL: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,6 +135,9 @@ services:
       - "4002:4002"
     env_file:
       - ./services/wallets/.env
+    environment:
+      OIDC_ISSUER: http://localhost:8080/realms/crash-game
+      OIDC_JWKS_URL: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy

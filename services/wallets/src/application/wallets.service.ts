@@ -1,6 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import {
-  DEFAULT_CURRENCY,
   DEFAULT_PLAYER_ID,
   DEFAULT_USERNAME,
   type CreateWalletRequestDto,
@@ -10,172 +9,75 @@ import {
   type WalletLedgerEntryDto,
   isPositiveInteger,
 } from "@crash/contracts";
-import { randomUUID } from "node:crypto";
 import {
-  insufficientFunds,
   invalidWalletAmount,
   walletNotFound,
 } from "../domain/wallet.errors";
-
-type WalletRecord = WalletDto;
+import {
+  WALLETS_REPOSITORY,
+  type WalletsRepository,
+} from "../infrastructure/wallets.repository";
 
 @Injectable()
-export class WalletsService {
-  private readonly wallets = new Map<string, WalletRecord>();
-  private readonly ledgerByIdempotencyKey = new Map<
-    string,
-    WalletLedgerEntryDto
-  >();
+export class WalletsService implements OnModuleInit {
   private readonly defaultBalanceCents = readIntegerEnv(
     "DEFAULT_WALLET_BALANCE_CENTS",
     100_000,
   );
 
-  constructor() {
-    this.createWallet({
+  constructor(
+    @Inject(WALLETS_REPOSITORY)
+    private readonly walletsRepository: WalletsRepository,
+  ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.walletsRepository.migrate();
+    await this.createWallet({
       playerId: DEFAULT_PLAYER_ID,
       username: DEFAULT_USERNAME,
     });
   }
 
-  createWallet(request: CreateWalletRequestDto = {}): WalletDto {
-    const now = new Date().toISOString();
-    const playerId = normalizeId(request.playerId, DEFAULT_PLAYER_ID);
-    const username = normalizeId(request.username, DEFAULT_USERNAME);
-    const existing = this.wallets.get(playerId);
-
-    if (existing) {
-      existing.username = username;
-      existing.updatedAt = now;
-      return { ...existing };
-    }
-
-    const wallet: WalletRecord = {
-      playerId,
-      username,
-      balanceCents: this.defaultBalanceCents,
-      currency: DEFAULT_CURRENCY,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    this.wallets.set(playerId, wallet);
-    this.recordLedgerEntry({
-      idempotencyKey: `wallet-seed:${playerId}`,
-      playerId,
-      type: "credit",
-      reason: "wallet_seed",
-      amountCents: wallet.balanceCents,
-      balanceAfterCents: wallet.balanceCents,
-      correlationId: `wallet:${playerId}`,
-      metadata: { source: "seed" },
-      createdAt: now,
-    });
-
-    return { ...wallet };
-  }
-
-  getWallet(playerId = DEFAULT_PLAYER_ID): WalletDto {
-    const wallet = this.wallets.get(normalizeId(playerId, DEFAULT_PLAYER_ID));
-
-    if (!wallet) {
-      throw walletNotFound(playerId);
-    }
-
-    return { ...wallet };
-  }
-
-  executeCommand(command: WalletCommandDto): WalletCommandResultDto {
-    if (!isPositiveInteger(command.amountCents)) {
-      throw invalidWalletAmount();
-    }
-
-    const previousEntry = this.ledgerByIdempotencyKey.get(
-      command.idempotencyKey,
+  async createWallet(request: CreateWalletRequestDto = {}): Promise<WalletDto> {
+    return this.walletsRepository.createWallet(
+      {
+        playerId: normalizeId(request.playerId, DEFAULT_PLAYER_ID),
+        username: normalizeId(request.username, DEFAULT_USERNAME),
+      },
+      this.defaultBalanceCents,
     );
+  }
 
-    if (previousEntry) {
-      return {
-        accepted: true,
-        idempotent: true,
-        wallet: this.getWallet(previousEntry.playerId),
-        ledgerEntry: { ...previousEntry },
-      };
-    }
-
-    const now = new Date().toISOString();
-    const playerId = normalizeId(command.playerId, DEFAULT_PLAYER_ID);
-    const wallet = this.ensureWalletRecord(
-      playerId,
-      command.username ?? playerId,
+  async getWallet(playerId = DEFAULT_PLAYER_ID): Promise<WalletDto> {
+    const wallet = await this.walletsRepository.findWallet(
+      normalizeId(playerId, DEFAULT_PLAYER_ID),
     );
-
-    const nextBalance =
-      command.type === "debit"
-        ? wallet.balanceCents - command.amountCents
-        : wallet.balanceCents + command.amountCents;
-
-    if (nextBalance < 0) {
-      throw insufficientFunds();
-    }
-
-    wallet.balanceCents = nextBalance;
-    wallet.updatedAt = now;
-
-    const ledgerEntry = this.recordLedgerEntry({
-      idempotencyKey: command.idempotencyKey,
-      playerId,
-      type: command.type,
-      reason: command.reason,
-      amountCents: command.amountCents,
-      balanceAfterCents: wallet.balanceCents,
-      correlationId: command.correlationId,
-      metadata: command.metadata ?? {},
-      createdAt: now,
-    });
-
-    return {
-      accepted: true,
-      idempotent: false,
-      wallet: { ...wallet },
-      ledgerEntry,
-    };
-  }
-
-  listLedger(playerId?: string): WalletLedgerEntryDto[] {
-    return Array.from(this.ledgerByIdempotencyKey.values())
-      .filter((entry) => !playerId || entry.playerId === playerId)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .map((entry) => ({ ...entry }));
-  }
-
-  private recordLedgerEntry(
-    entry: Omit<WalletLedgerEntryDto, "id">,
-  ): WalletLedgerEntryDto {
-    const ledgerEntry = {
-      ...entry,
-      id: randomUUID(),
-    };
-
-    this.ledgerByIdempotencyKey.set(entry.idempotencyKey, ledgerEntry);
-    return { ...ledgerEntry };
-  }
-
-  private ensureWalletRecord(playerId: string, username: string): WalletRecord {
-    const existing = this.wallets.get(playerId);
-
-    if (existing) {
-      return existing;
-    }
-
-    this.createWallet({ playerId, username });
-    const wallet = this.wallets.get(playerId);
 
     if (!wallet) {
       throw walletNotFound(playerId);
     }
 
     return wallet;
+  }
+
+  async executeCommand(
+    command: WalletCommandDto,
+  ): Promise<WalletCommandResultDto> {
+    if (!isPositiveInteger(command.amountCents)) {
+      throw invalidWalletAmount();
+    }
+
+    return this.walletsRepository.executeCommand(
+      {
+        ...command,
+        playerId: normalizeId(command.playerId, DEFAULT_PLAYER_ID),
+      },
+      this.defaultBalanceCents,
+    );
+  }
+
+  async listLedger(playerId?: string): Promise<WalletLedgerEntryDto[]> {
+    return this.walletsRepository.listLedger(playerId);
   }
 }
 

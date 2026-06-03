@@ -8,6 +8,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
+      "src/*": ["src/*"],
       "@crash/contracts": ["../packages/contracts/src/index.ts"]
     },
     "allowImportingTsExtensions": true,

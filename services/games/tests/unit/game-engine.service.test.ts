@@ -2,16 +2,23 @@ import { describe, expect, it } from "bun:test";
 import {
   DEFAULT_CURRENCY,
   type WalletCommandDto,
+  type WalletCommandOutcomeDto,
   type WalletCommandResultDto,
 } from "@crash/contracts";
 import { GameEngineService } from "../../src/application/game-engine.service";
-import type { WalletsHttpClient } from "../../src/infrastructure/wallets-http.client";
 import { GameDomainError } from "../../src/domain/game.errors";
+import { InMemoryGameRepository } from "../../src/infrastructure/game.repository";
+import type { WalletsEventsClient } from "../../src/infrastructure/wallets-events.client";
+import { Subject } from "rxjs";
 
 describe("GameEngineService", () => {
   it("places one bet per player while betting is open", async () => {
     const walletClient = createWalletClient();
-    const service = new GameEngineService(walletClient);
+    const service = new GameEngineService(
+      walletClient,
+      new InMemoryGameRepository(),
+    );
+    await service.onModuleInit();
 
     try {
       const result = await service.placeBet(
@@ -32,10 +39,12 @@ describe("GameEngineService", () => {
   });
 });
 
-function createWalletClient(): WalletsHttpClient {
+function createWalletClient(): WalletsEventsClient {
   let balanceCents = 100_000;
+  const outcomes = new Subject<WalletCommandOutcomeDto>();
 
   return {
+    outcomes$: outcomes.asObservable(),
     executeCommand: async (
       command: WalletCommandDto,
     ): Promise<WalletCommandResultDto> => {
@@ -69,5 +78,5 @@ function createWalletClient(): WalletsHttpClient {
         },
       };
     },
-  } as WalletsHttpClient;
+  } as WalletsEventsClient;
 }
