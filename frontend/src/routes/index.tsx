@@ -1,11 +1,10 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../packages/core/hooks/auth';
-import { useSocketInstance } from 'src/packages/core/stores';
-import { HomePage } from 'src/packages/ui/pages';
+import { useSocketInstance } from '../packages/core/stores';
+import { HomePage } from '../packages/ui/pages';
 
 export const Route = createFileRoute('/')({
-  pendingComponent: () => <>Carregando jogo</>,
   component: () => {
     const auth = useAuth();
     const player = auth.player;

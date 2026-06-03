@@ -13,7 +13,7 @@ if (!rootElement) {
   throw new Error('Root element #root not found')
 }
 
-useAuth().initializeAuthStore();
+useAuth.getState().initializeAuthStore();
 
 if (!rootElement.innerHTML) {
   ReactDOM.createRoot(rootElement).render(

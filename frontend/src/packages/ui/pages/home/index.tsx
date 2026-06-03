@@ -1,4 +1,3 @@
-import { PlayerIdentity } from "src/packages/core/hooks/auth/oidc";
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 import {
@@ -7,17 +6,18 @@ import {
   payoutForMultiplier,
   type RealtimeEventDto,
 } from '@crash/contracts';
-import { 
-  useBetsQuery, 
-  useHistoryQuery, 
-  usePlaceBetMutation, 
-  useRoundQuery, 
-  useUtil, 
-  useWalletQuery 
-} from "src/packages/core/hooks";
-import { useCashoutMutation } from "src/packages/core/hooks/index";
+import {
+  useBetsQuery,
+  useCashoutMutation,
+  useHistoryQuery,
+  usePlaceBetMutation,
+  useRoundQuery,
+  useUtil,
+  useWalletQuery,
+} from '../../../../packages/core/hooks';
+import type { PlayerIdentity } from '../../../../packages/core/hooks/auth/oidc';
 
-export default function HomePage({ player }: { player: PlayerIdentity  }) {
+export default function HomePage({ player }: { player: PlayerIdentity }) {
   const [betAmount, setBetAmount] = useState('10,00');
   const [lastEvent, setLastEvent] = useState<RealtimeEventDto | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
