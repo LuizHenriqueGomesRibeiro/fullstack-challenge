@@ -6,6 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "typecheck": "tsc --noEmit",
     "generate-routes": "tsr generate",
     "watch-routes": "tsr watch"
@@ -25,10 +27,13 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "4.3.0",
+    "@storybook/react-vite": "^10.4.2",
     "@tanstack/router-cli": "^1.128.15",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "storybook": "^10.4.2",
     "typescript": "^5.8.3",
     "vite": "^7.0.4"
   }
