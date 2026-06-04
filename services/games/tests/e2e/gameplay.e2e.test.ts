@@ -36,6 +36,28 @@ describe("Crash gameplay e2e", () => {
     expect(betResponse.status).toBe(401);
   }, 20_000);
 
+  it("rejects bets during an active round", async () => {
+    const player = await login("player", "player123");
+
+    await ensureWallet(player);
+    await setWalletBalance(player.playerId, 100_000);
+
+    const bettingRound = await waitForBettingRound();
+    await waitForRunningRound(bettingRound.id);
+
+    const response = await requestJson<{ code?: string; message?: string }>(
+      "/games/bet",
+      {
+        body: JSON.stringify({ amountCents: 1_000 }),
+        headers: authJsonHeaders(player.accessToken),
+        method: "POST",
+      },
+    );
+
+    expect(response.response.status).toBe(409);
+    expect(response.body.code).toBe("ROUND_BETTING_CLOSED");
+  }, 120_000);
+
   it("covers bet -> cashout, bet -> crash, duplicate bet and insufficient funds", async () => {
     const player = await login("player", "player123");
     const ranger = await login("ranger", "ranger123");
@@ -203,18 +225,13 @@ async function waitForBettingRound(
 ): Promise<RoundDto> {
   return waitFor(async () => {
     const round = await getCurrentRound();
-    const enoughTimeLeft = Date.parse(round.bettingEndsAt) - Date.now() > 1_000;
 
-    if (
-      round.phase === "betting" &&
-      round.id !== previousRoundId &&
-      enoughTimeLeft
-    ) {
+    if (round.phase === "betting" && round.id !== previousRoundId) {
       return round;
     }
 
     return null;
-  }, 35_000);
+  }, 60_000);
 }
 
 async function waitForRunningRound(roundId: string): Promise<RoundDto> {

@@ -9,7 +9,13 @@
   "scripts": {
     "docker:up": "docker compose up",
     "docker:down": "docker compose down",
-    "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f"
+    "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f",
+    "test:games:unit": "bun scripts/test-runner.ts games:unit",
+    "test:games:e2e": "bun scripts/test-runner.ts games:e2e",
+    "test:wallets:unit": "bun scripts/test-runner.ts wallets:unit",
+    "test:wallets:e2e": "bun scripts/test-runner.ts wallets:e2e",
+    "test:frontend": "bun scripts/test-runner.ts frontend",
+    "test:all": "bun scripts/test-runner.ts all"
   },
   "devDependencies": {
     "bun-types": "latest"

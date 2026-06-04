@@ -43,6 +43,22 @@ describe("WalletsService", () => {
     expect(credit.wallet.balanceCents).toBe(debit.wallet.balanceCents + 1_750);
   });
 
+  it("rejects fractional cent amounts before touching the repository", async () => {
+    const service = createService();
+    await service.createWallet({ playerId: "p3", username: "switch" });
+
+    await expect(
+      service.executeCommand({
+        idempotencyKey: "bet:p3:decimal",
+        playerId: "p3",
+        type: "debit",
+        reason: "bet_placed",
+        amountCents: 1.5 as unknown as number,
+        correlationId: "bet-decimal",
+      }),
+    ).rejects.toThrow(WalletDomainError);
+  });
+
   it("rejects debits that would make balance negative", async () => {
     const service = createService();
     await service.createWallet({ playerId: "p2", username: "trinity" });
