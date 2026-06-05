@@ -42,8 +42,20 @@ describe("Crash gameplay e2e", () => {
     await ensureWallet(player);
     await setWalletBalance(player.playerId, 100_000);
 
-    const bettingRound = await waitForBettingRound();
-    await waitForRunningRound(bettingRound.id);
+    let runningRound: RoundDto | null = null;
+    let previousRoundId: string | undefined;
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const bettingRound = await waitForBettingRound(previousRoundId);
+      previousRoundId = bettingRound.id;
+      runningRound = await waitForRunningRound(bettingRound.id);
+
+      if (runningRound) {
+        break;
+      }
+    }
+
+    expect(runningRound).not.toBeNull();
 
     const response = await requestJson<{ code?: string; message?: string }>(
       "/games/bet",
@@ -119,7 +131,12 @@ async function completeCashoutFlow(
       duplicateChecked = true;
     }
 
-    await waitForRunningRound(round.id);
+    const runningRound = await waitForRunningRound(round.id);
+    if (!runningRound) {
+      await waitForBetStatus(player, round.id, "lost");
+      continue;
+    }
+
     const cashout = await requestJson<CashoutResultDto>(
       "/games/bet/cashout",
       {
@@ -234,11 +251,28 @@ async function waitForBettingRound(
   }, 60_000);
 }
 
-async function waitForRunningRound(roundId: string): Promise<RoundDto> {
-  return waitFor(async () => {
+async function waitForRunningRound(roundId: string): Promise<RoundDto | null> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < 35_000) {
     const round = await getCurrentRound();
-    return round.id === roundId && round.phase === "running" ? round : null;
-  }, 35_000);
+
+    if (round.id !== roundId) {
+      return null;
+    }
+
+    if (round.phase === "running") {
+      return round;
+    }
+
+    if (round.phase !== "betting") {
+      return null;
+    }
+
+    await sleep(50);
+  }
+
+  return null;
 }
 
 async function waitForBetStatus(
