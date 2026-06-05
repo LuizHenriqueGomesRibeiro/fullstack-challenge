@@ -14,7 +14,7 @@ export default function HomePage({ player }: { player: PlayerIdentity }) {
   const controller = HomePageController(player);
   return <section className="game-grid">
     <HomeHeroBoard
-      crashPointLabel={controller.round?.crashPointBp ? formatMultiplier(controller.round.crashPointBp) : '???'}
+      crashPointLabel={controller.round?.crashPointBp ? formatMultiplier(controller.round.crashPointBp) : '0.00x'}
       serverSeedHashLabel={controller.round?.serverSeedHash ?? 'aguardando rodada'}
       multiplierLabel={formatMultiplier(controller.liveMultiplierBp)}
       phaseLabel={controller.phaseLabel(controller.phase)}
