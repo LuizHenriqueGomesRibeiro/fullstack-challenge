@@ -17,6 +17,7 @@ export default function HomePage({ player }: { player: PlayerIdentity }) {
       crashPointLabel={controller.round?.crashPointBp ? formatMultiplier(controller.round.crashPointBp) : '0.00x'}
       serverSeedHashLabel={controller.round?.serverSeedHash ?? 'aguardando rodada'}
       multiplierLabel={formatMultiplier(controller.liveMultiplierBp)}
+      multiplierBp={controller.liveMultiplierBp}
       phaseLabel={controller.phaseLabel(controller.phase)}
       countdownLabel={controller.countdownLabel}
       graphProgress={controller.graphProgress}

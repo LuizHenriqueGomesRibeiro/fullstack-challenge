@@ -7,6 +7,7 @@ const meta = {
   component: HomeHeroBoard,
   args: {
     multiplierLabel: '2.48x',
+    multiplierBp: 248,
     phase: 'running',
     phaseLabel: 'Rodada em andamento',
     countdownLabel: '00:14',
@@ -25,6 +26,7 @@ export const Running: Story = {}
 export const Betting: Story = {
   args: {
     multiplierLabel: '1.00x',
+    multiplierBp: 100,
     phase: 'betting',
     phaseLabel: 'Aguardando apostas',
     countdownLabel: '00:07',
@@ -36,6 +38,7 @@ export const Betting: Story = {
 export const Crashed: Story = {
   args: {
     multiplierLabel: '3.72x',
+    multiplierBp: 372,
     phase: 'crashed',
     phaseLabel: 'Crash ocorrido',
     countdownLabel: 'CRASH',
@@ -43,4 +46,3 @@ export const Crashed: Story = {
     graphProgress: 1,
   },
 }
-

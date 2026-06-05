@@ -20,5 +20,5 @@ if git config --get commit.template >/dev/null 2>&1; then
   exit 0
 fi
 
-echo "Use 'npm run commit' instead of 'git commit'."
+echo "Use 'bun run commit' instead of 'git commit'."
 exit 1

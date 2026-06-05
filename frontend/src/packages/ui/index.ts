@@ -5,3 +5,7 @@ export { default as HomeBetsTable } from './home-bets-table';
 export { default as HomeHistoryCard } from './home-history-card';
 export { default as HomeTelemetryCard } from './home-telemetry-card';
 export { default as AuthGate } from './auth-gate';
+export {
+  CrashGraphProvider,
+  useCrashGraph,
+} from './home-hero-board/crash-graph-context';

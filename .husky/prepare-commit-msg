@@ -13,5 +13,5 @@ if [ "${CRASH_GAME_NPM_COMMIT:-0}" = "1" ]; then
   exit 0
 fi
 
-echo "Use 'npm run commit' instead of 'git commit'."
+echo "Use 'bun run commit' instead of 'git commit'."
 exit 1

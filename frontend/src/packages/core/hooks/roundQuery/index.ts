@@ -47,7 +47,10 @@ export default function useRoundQuery(player: PlayerIdentity) {
 
   const liveMultiplierBp = round?.currentMultiplierBp ?? 100;
 
-  const graphProgress = Math.min(Math.max((liveMultiplierBp - 100) / 600, 0), 1);
+  const graphProgress = Math.min(
+    Math.max(Math.log(Math.max(liveMultiplierBp / 100, 1)) / Math.log(10), 0),
+    1,
+  );
 
   return {
     phase,

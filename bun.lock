@@ -14,6 +14,7 @@
       "name": "frontend",
       "dependencies": {
         "@crash/contracts": "workspace:*",
+        "@react-spring/web": "^10.1.0",
         "@tanstack/react-query": "^5.100.14",
         "@tanstack/react-query-devtools": "^5.100.14",
         "@tanstack/react-router": "^1.128.15",
@@ -328,6 +329,18 @@
     "@oxc-resolver/binding-win32-arm64-msvc": ["@oxc-resolver/binding-win32-arm64-msvc@11.20.0", "", { "os": "win32", "cpu": "arm64" }, "sha512-qPi25YNPe4YenS8MgsQU2+bIFHxxpLx1LVna2444cEHqNPhNjvWf9zqj4aWE43H9LpAsTmkkAlA3eL5ElBU3mA=="],
 
     "@oxc-resolver/binding-win32-x64-msvc": ["@oxc-resolver/binding-win32-x64-msvc@11.20.0", "", { "os": "win32", "cpu": "x64" }, "sha512-Wb14jWEW8huH6It9F6sXd9vrYmIS7pMrgkU6sxpLxkP+9z+wRgs71hUEhRpcn8FOXAFa27FVWfY2tRpbfTzfLw=="],
+
+    "@react-spring/animated": ["@react-spring/animated@10.1.0", "", { "dependencies": { "@react-spring/shared": "~10.1.0", "@react-spring/types": "~10.1.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-dvGVSfNYhbkzTAnyB1S1940ZiKp6/Ey+b2vQc70dJ5k6gzH/GdlfeDzCh65V94b6OPqF7Xl4VUICVUQpc07iUg=="],
+
+    "@react-spring/core": ["@react-spring/core@10.1.0", "", { "dependencies": { "@react-spring/animated": "~10.1.0", "@react-spring/shared": "~10.1.0", "@react-spring/types": "~10.1.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-XUG3UCCCxay6lYjBU2KOKzEgC1sx/w44ouB5gRh2Ex6rVJOdPcGVg7JJUIOAQo7uhKGfQdCQU4qUZaQnmInZPQ=="],
+
+    "@react-spring/rafz": ["@react-spring/rafz@10.1.0", "", {}, "sha512-e/LRnNmvmg8Agl4j3MGcjHuSTSBcCrxr3xeoWdodxpLWeTHY1pHl8PJDOCEJ2Pj6BMdEBaWFRAX7uxRo1FLzCg=="],
+
+    "@react-spring/shared": ["@react-spring/shared@10.1.0", "", { "dependencies": { "@react-spring/rafz": "~10.1.0", "@react-spring/types": "~10.1.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-ogIUujWxdwcsQ2Vp2hZs+KehvH8tKeWGHsFb1eRBYoePzhKS541Qg1JfFlQ7ursBUwwPDBQ5Wpwn+Cwx6WV1PQ=="],
+
+    "@react-spring/types": ["@react-spring/types@10.1.0", "", {}, "sha512-RkJAlkAZ5yZSRBMOSidamioBHLjf8wGKbtr3pZ5iKoHFNQuNM2k6DqJDIEUcNQlWRZXny6Eqys2c9NdugdbdyQ=="],
+
+    "@react-spring/web": ["@react-spring/web@10.1.0", "", { "dependencies": { "@react-spring/animated": "~10.1.0", "@react-spring/core": "~10.1.0", "@react-spring/shared": "~10.1.0", "@react-spring/types": "~10.1.0", "csstype": "^3.2.3" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-mIj/lJ+1eI4tLSkIloaSNjmuriTDZY9bbQ/GFGcbVGfOKzWb5JOMMKiuHACh8J3m0+se3KqcWdg/JoALVloE7g=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-rc.3", "", {}, "sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q=="],
 
