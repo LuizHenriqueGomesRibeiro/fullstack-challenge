@@ -101,7 +101,6 @@ function CrashGraphSvg({
     markerGradientId,
     phase,
     plot,
-    referenceCurvePath,
     visual,
   } = useCrashGraph();
 
@@ -195,8 +194,6 @@ function CrashGraphSvg({
             y2={floorY}
           />
         </g>
-
-        <path className="graph-reference" d={referenceCurvePath} />
 
         <animated.g className="graph-stage" transform={plot.stageTransform}>
           <animated.path

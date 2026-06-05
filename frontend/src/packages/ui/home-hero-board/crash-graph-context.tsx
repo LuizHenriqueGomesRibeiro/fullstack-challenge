@@ -97,7 +97,6 @@ type CrashGraphContextValue = {
   areaGradientId: string;
   markerGradientId: string;
   impactGradientId: string;
-  referenceCurvePath: string;
   reducedMotion: boolean;
 };
 
@@ -115,6 +114,36 @@ export function point(value: number) {
 function smoothstep(edgeStart: number, edgeEnd: number, value: number) {
   const amount = clamp((value - edgeStart) / (edgeEnd - edgeStart), 0, 1);
   return amount * amount * (3 - 2 * amount);
+}
+
+function exponentialEase(value: number, strength = 4.2) {
+  const normalized = clamp(value, 0, 1);
+  if (normalized === 0) return 0;
+  if (normalized === 1) return 1;
+
+  const curve = Math.exp(strength * normalized) - 1;
+  return curve / (Math.exp(strength) - 1);
+}
+
+function buildExponentialCurvePath(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  segments = 28,
+) {
+  const points: string[] = [];
+  const step = Math.max(2, segments);
+
+  for (let index = 0; index <= step; index += 1) {
+    const t = index / step;
+    const eased = exponentialEase(t);
+    const x = startX + (endX - startX) * t;
+    const y = startY + (endY - startY) * eased;
+    points.push(`${index === 0 ? 'M' : 'L'} ${point(x)} ${point(y)}`);
+  }
+
+  return points.join(' ');
 }
 
 export function normalizeCrashGraphPhase(phase: string): CrashGraphPhase {
@@ -190,15 +219,13 @@ export function buildCrashCurvePlot(
   const visualProgress = isBetting
     ? clamp(normalizedProgress, 0.08, 0.22)
     : clamp(Math.max(normalizedProgress, multiplierLift * 0.86, 0.045), 0.045, 1);
-  const heat = smoothstep(0.12, 0.92, visualProgress);
-  const verticality = smoothstep(0.3, 0.96, visualProgress);
-  const horizontalProgress = isBetting
-    ? visualProgress * 0.72
-    : clamp(Math.pow(visualProgress, 0.72) - verticality * 0.035, 0.05, 1);
+  const curveProgress = isBetting ? visualProgress * 0.72 : visualProgress;
+  const curveLift = exponentialEase(curveProgress);
+  const horizontalProgress = isBetting ? curveProgress : clamp(curveProgress, 0.05, 1);
   const endpointLift = isBetting
-    ? clamp(0.028 + visualProgress * 0.065, 0.032, 0.05)
+    ? clamp(0.028 + curveProgress * 0.065, 0.032, 0.05)
     : clamp(
-        0.026 + Math.pow(visualProgress, 1.72) * 0.86 + multiplierLift * 0.105,
+        0.03 + curveLift * 0.9 + multiplierLift * 0.085,
         0.048,
         phase === 'crashed' ? 0.98 : 0.94,
       );
@@ -207,24 +234,15 @@ export function buildCrashCurvePlot(
   const startY = floorY;
   const endX = startX + plotWidth * horizontalProgress;
   const endY = floorY - plotHeight * endpointLift;
-  const dx = endX - startX;
-  const liftPx = startY - endY;
-  const steepness = smoothstep(0.24, 0.88, endpointLift);
-  const firstHandleLift = clamp(liftPx * (0.018 + heat * 0.035), 2, 22);
-  const secondHandleDrop = clamp(liftPx * (0.46 - steepness * 0.22) + 12, 22, 116);
-  const secondHandleReach = Math.max(12, dx * (0.22 - steepness * 0.17));
-  const controlOneX = startX + dx * (0.34 + (1 - heat) * 0.06);
-  const controlOneY = startY - firstHandleLift;
-  const controlTwoX = endX - secondHandleReach;
-  const controlTwoY = endY + secondHandleDrop;
-  const curvePath = [
-    `M ${point(startX)} ${point(startY)}`,
-    `C ${point(controlOneX)} ${point(controlOneY)}`,
-    `${point(controlTwoX)} ${point(controlTwoY)}`,
-    `${point(endX)} ${point(endY)}`,
-  ].join(' ');
+  const curvePath = buildExponentialCurvePath(startX, startY, endX, endY);
+  const curvePathPoints = curvePath.match(/(?:M|L)\s+[-0-9.]+\s+[-0-9.]+/g) ?? [];
+  const lastPoint = curvePathPoints.at(-1)?.split(/\s+/).slice(1).map(Number) ?? [endX, endY];
+  const previousPoint =
+    curvePathPoints.at(-2)?.split(/\s+/).slice(1).map(Number) ?? [startX, startY];
+  const [prevX, prevY] = previousPoint;
+  const [lastX, lastY] = lastPoint;
   const markerAngle =
-    (Math.atan2(endY - controlTwoY, endX - controlTwoX) * 180) / Math.PI;
+    (Math.atan2(lastY - prevY, lastX - prevX) * 180) / Math.PI;
 
   return {
     areaPath: `${curvePath} L ${point(endX)} ${point(floorY)} L ${point(startX)} ${point(floorY)} Z`,
@@ -238,20 +256,11 @@ export function buildCrashCurvePlot(
     startY,
     endX,
     endY,
-    controlOneX,
-    controlOneY,
-    controlTwoX,
-    controlTwoY,
+    controlOneX: startX + (endX - startX) * 0.35,
+    controlOneY: startY - (startY - endY) * 0.12,
+    controlTwoX: startX + (endX - startX) * 0.78,
+    controlTwoY: startY - (startY - endY) * 0.76,
   };
-}
-
-export function buildReferenceCurvePath() {
-  return [
-    `M ${point(baselineStartX)} ${point(floorY)}`,
-    `C ${point(baselineStartX + plotWidth * 0.38)} ${point(floorY - 3)}`,
-    `${point(baselineStartX + plotWidth * 0.82)} ${point(PLOT.top + plotHeight * 0.72)}`,
-    `${point(baselineStartX + plotWidth)} ${point(PLOT.top + 9)}`,
-  ].join(' ');
 }
 
 function progressSpringConfig(
@@ -365,7 +374,6 @@ export function CrashGraphProvider({
     immediate: reducedMotion,
   });
   const [visual, visualApi] = useSpring(() => phaseVisualTarget(graphPhase));
-  const referenceCurvePath = useMemo(() => buildReferenceCurvePath(), []);
   const curveGradientId = `${reactId}-crash-curve`;
   const areaGradientId = `${reactId}-crash-area`;
   const markerGradientId = `${reactId}-crash-marker`;
@@ -502,7 +510,6 @@ export function CrashGraphProvider({
       areaGradientId,
       markerGradientId,
       impactGradientId,
-      referenceCurvePath,
       reducedMotion,
     }),
     [
@@ -514,7 +521,6 @@ export function CrashGraphProvider({
       plot,
       progress,
       reducedMotion,
-      referenceCurvePath,
       visual,
     ],
   );

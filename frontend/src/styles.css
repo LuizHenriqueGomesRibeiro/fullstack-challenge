@@ -357,14 +357,6 @@ h1 {
   letter-spacing: 0;
 }
 
-.graph-reference {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.13);
-  stroke-dasharray: 9 13;
-  stroke-linecap: round;
-  stroke-width: 2;
-}
-
 .graph-area {
   pointer-events: none;
 }
