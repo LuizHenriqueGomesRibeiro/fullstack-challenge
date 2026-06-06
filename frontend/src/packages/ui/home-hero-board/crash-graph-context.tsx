@@ -443,45 +443,15 @@ export function CrashGraphProvider({
 
     if (graphPhase === 'crashed') {
       void visualApi.start({
-        from: {
-          ...target,
-          crashLineOpacity: 0,
-          impactOpacity: 0,
-          impactScale: 0.58,
-          markerScale: 1,
-        },
-        to: async (next) => {
-          await next({
-            ...target,
-            crashLineOpacity: 1,
-            impactOpacity: 0.92,
-            impactScale: 1.08,
-            markerScale: 1.18,
-            sparkOpacity: 0.92,
-            shakeX: -5,
-            shakeY: 2,
-            config: { duration: 80 },
-          });
-          await next({
-            ...target,
-            impactOpacity: 0.34,
-            impactScale: 1.42,
-            markerScale: 0.96,
-            sparkOpacity: 0.38,
-            shakeX: 4,
-            shakeY: -1,
-            config: { duration: 95 },
-          });
-          await next({
-            ...target,
-            impactOpacity: 0,
-            impactScale: 1.82,
-            markerScale: 1,
-            shakeX: 0,
-            shakeY: 0,
-            config: { tension: 220, friction: 26 },
-          });
-        },
+        ...target,
+        crashLineOpacity: 1,
+        impactOpacity: 0,
+        impactScale: 1.7,
+        markerScale: 1,
+        sparkOpacity: 0,
+        shakeX: 0,
+        shakeY: 0,
+        immediate: true,
       });
       return;
     }

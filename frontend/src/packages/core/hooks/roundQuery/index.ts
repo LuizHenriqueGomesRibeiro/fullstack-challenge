@@ -2,7 +2,10 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { PlayerIdentity } from "../auth/oidc";
 import { gamesApi } from "../../zodios/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { calculateCrashGraphProgress } from "../../utils/crash-graph";
+import {
+  calculateCrashGraphProgress,
+  freezeCrashGraphProgress,
+} from "../../utils/crash-graph";
 
 export function useRoundQueryOptions() {
   return queryOptions({
@@ -77,12 +80,15 @@ export default function useRoundQuery(player: PlayerIdentity) {
 
     const initialProgress = calculateGraphProgress(liveMultiplierBp);
     graphStartTimeRef.current = performance.now();
-    setGraphProgress(initialProgress);
 
     if (phase === 'crashed') {
-      setGraphProgress(calculateGraphProgress(liveMultiplierBp));
+      setGraphProgress((currentProgress) =>
+        freezeCrashGraphProgress(currentProgress, liveMultiplierBp),
+      );
       return;
     }
+
+    setGraphProgress(initialProgress);
 
     const step = (frameTime: number) => {
       const startedAt = graphStartTimeRef.current ?? frameTime;

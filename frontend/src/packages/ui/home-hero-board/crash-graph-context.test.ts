@@ -9,6 +9,7 @@ import {
   resolveCrashGraphProgress,
 } from './crash-graph-context';
 import { calculateGraphProgress } from '../../core/hooks/roundQuery';
+import { freezeCrashGraphProgress } from '../../core/utils/crash-graph';
 
 describe('crash graph curve generation', () => {
   it('builds an exponential sampled path instead of a cubic bezier', () => {
@@ -63,6 +64,10 @@ describe('crash graph curve generation', () => {
   it('keeps graph progress moving past 1', () => {
     expect(calculateGraphProgress(120_000)).toBeGreaterThan(1);
     expect(resolveCrashGraphProgress(2.3, 120_000, 'running')).toBeGreaterThan(1);
+  });
+
+  it('does not rewind the graph when the round crashes', () => {
+    expect(freezeCrashGraphProgress(2.1, 112)).toBe(2.1);
   });
 
   it('anchors the marker height to the current multiplier', () => {

@@ -63,3 +63,10 @@ export function calculateCrashGraphProgress(liveMultiplierBp: number) {
       EXPONENTIAL_SCALE_STRENGTH,
   );
 }
+
+export function freezeCrashGraphProgress(
+  previousProgress: number,
+  liveMultiplierBp: number,
+) {
+  return Math.max(previousProgress, calculateCrashGraphProgress(liveMultiplierBp));
+}
