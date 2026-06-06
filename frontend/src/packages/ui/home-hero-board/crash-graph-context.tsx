@@ -17,7 +17,6 @@ import {
   useSpringValue,
 } from '@react-spring/web';
 import {
-  getCrashGraphAxisMaxMultiplierBp,
   getCrashGraphXAxisTickValues,
   getCrashGraphYAxisTickValues,
   exponentialCurveProgress,
@@ -38,9 +37,9 @@ export const plotHeight = GRAPH_HEIGHT - PLOT.top - PLOT.bottom;
 export const floorY = GRAPH_HEIGHT - PLOT.bottom;
 export const baselineStartX = PLOT.left;
 const GRAPH_DURATION_SECONDS = 3.75;
-const VISUAL_TIME_EASING_POWER = 0.9;
-const RAW_SECONDS_AT_10X = (1000 - 100) / 250;
-const VISUAL_SECONDS_AT_10X = 3.75;
+const MAX_GRAPH_MULTIPLIER = 20;
+const MAX_GRAPH_MULTIPLIER_BP = MAX_GRAPH_MULTIPLIER * 100;
+const VISUAL_SECONDS_AT_10X = GRAPH_DURATION_SECONDS;
 export type CrashGraphPhase = 'betting' | 'running' | 'crashed';
 
 export type CrashCurvePlot = {
@@ -95,7 +94,6 @@ type CrashGraphAnimatedPlot = {
 type CrashGraphContextValue = {
   phase: CrashGraphPhase;
   progress: SpringValue<number>;
-  multiplier: SpringValue<number>;
   visual: SpringValues<CrashGraphVisualState>;
   plot: CrashGraphAnimatedPlot;
   yAxisTicks: Array<{ label: string; y: number }>;
@@ -155,7 +153,10 @@ export function buildYAxisTicks(
   axisMaxMultiplierBp: number,
   graphHeightPx = plotHeight,
 ) {
-  const axisMaxMultiplier = Math.max(10, axisMaxMultiplierBp / 100);
+  const axisMaxMultiplier = Math.min(
+    MAX_GRAPH_MULTIPLIER,
+    Math.max(10, axisMaxMultiplierBp / 100),
+  );
 
   return getCrashGraphYAxisTickValues(axisMaxMultiplierBp, graphHeightPx).map((tick) => ({
     label: tick.label,
@@ -185,28 +186,8 @@ export function normalizeCrashGraphPhase(phase: string): CrashGraphPhase {
 
 function multiplierProgress(multiplierBp: number) {
   const multiplier = Math.max(0, multiplierBp / 100 - 1);
-  const axisMaxMultiplier = Math.max(
-    10,
-    getCrashGraphAxisMaxMultiplierBp(multiplierBp, plotHeight) / 100,
-  );
+  const axisMaxMultiplier = MAX_GRAPH_MULTIPLIER;
   return 1 - Math.exp(-multiplier / axisMaxMultiplier);
-}
-
-function multiplierAxisLift(multiplierBp: number) {
-  const multiplier = Math.max(1, multiplierBp / 100);
-  const axisMaxMultiplier = Math.max(
-    10,
-    getCrashGraphAxisMaxMultiplierBp(multiplierBp, plotHeight) / 100,
-  );
-
-  return clamp(multiplier / axisMaxMultiplier, 0, 1);
-}
-
-function multiplierToVisualTimeSeconds(multiplierBp: number) {
-  const elapsedSeconds = Math.max(0, (multiplierBp - 100) / 250);
-  const normalized = clamp(elapsedSeconds / RAW_SECONDS_AT_10X, 0, 1);
-
-  return Math.pow(normalized, VISUAL_TIME_EASING_POWER) * VISUAL_SECONDS_AT_10X;
 }
 
 export function resolveCrashGraphProgress(
@@ -234,7 +215,7 @@ export function buildCrashCurvePlot(
 ): CrashCurvePlot {
   const normalizedProgress = Math.max(progress, 0);
   const isBetting = phase === 'betting';
-  const multiplierLift = multiplierProgress(multiplierBp);
+  void multiplierBp;
 
   if (isBetting) {
     const startX = baselineStartX;
@@ -265,25 +246,18 @@ export function buildCrashCurvePlot(
     };
   }
 
+  const timeProgress = clamp(normalizedProgress / VISUAL_SECONDS_AT_10X, 0, 1);
   const visualProgress = isBetting
     ? clamp(normalizedProgress, 0.08, 0.22)
-    : Math.max(
-        exponentialEase(normalizedProgress * 0.95),
-        multiplierLift * 0.86,
-      );
+    : clamp(exponentialEase(timeProgress * 0.82, 2.8), 0, 1);
   const curveProgress = isBetting ? visualProgress * 0.72 : visualProgress;
-  const axisLift = multiplierAxisLift(multiplierBp);
   const horizontalProgress = isBetting
     ? curveProgress
-    : clamp(
-        multiplierToVisualTimeSeconds(multiplierBp) / VISUAL_SECONDS_AT_10X,
-        0,
-        1,
-      );
+    : clamp(timeProgress, 0, 0.999);
   const endpointLift = isBetting
     ? clamp(0.028 + curveProgress * 0.065, 0.032, 0.05)
     : clamp(
-        0.02 + axisLift * 0.94,
+        0.02 + timeProgress * 0.94,
         0.048,
         phase === 'crashed' ? 0.98 : 0.94,
       );
@@ -422,19 +396,12 @@ export function CrashGraphProvider({
   const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const graphPhase = normalizeCrashGraphPhase(phase);
   const reducedMotion = Boolean(useReducedMotion());
-  const axisMaxMultiplierBp = getCrashGraphAxisMaxMultiplierBp(
-    multiplierBp,
-    plotHeight,
-  );
+  const axisMaxMultiplierBp = MAX_GRAPH_MULTIPLIER_BP;
   const targetProgress = resolveCrashGraphProgress(
     graphProgress,
     multiplierBp,
     graphPhase,
   );
-  const multiplier = useSpringValue(multiplierBp, {
-    config: { tension: 180, friction: 24, precision: 0.1 },
-    immediate: reducedMotion,
-  });
   const progress = useSpringValue(targetProgress, {
     config: progressSpringConfig(graphPhase, targetProgress),
     immediate: reducedMotion,
@@ -452,19 +419,6 @@ export function CrashGraphProvider({
   const areaGradientId = `${reactId}-crash-area`;
   const markerGradientId = `${reactId}-crash-marker`;
   const impactGradientId = `${reactId}-crash-impact`;
-
-  useEffect(() => {
-    if (reducedMotion) {
-      multiplier.stop();
-      multiplier.set(multiplierBp);
-      return;
-    }
-
-    void multiplier.start({
-      to: multiplierBp,
-      config: { tension: 180, friction: 24, precision: 0.1 },
-    });
-  }, [multiplier, multiplierBp, reducedMotion]);
 
   useEffect(() => {
     if (reducedMotion) {
@@ -524,10 +478,10 @@ export function CrashGraphProvider({
 
   const animatedPlot = useMemo(
     () =>
-      to([progress, multiplier], (currentProgress, currentMultiplierBp) =>
-        buildCrashCurvePlot(currentProgress, currentMultiplierBp, graphPhase),
+      progress.to((currentProgress) =>
+        buildCrashCurvePlot(currentProgress, MAX_GRAPH_MULTIPLIER_BP, graphPhase),
       ),
-    [graphPhase, multiplier, progress],
+    [graphPhase, progress],
   );
 
   const plot = useMemo<CrashGraphAnimatedPlot>(() => {
@@ -566,7 +520,6 @@ export function CrashGraphProvider({
     () => ({
       phase: graphPhase,
       progress,
-      multiplier,
       visual,
       plot,
       yAxisTicks,
@@ -586,7 +539,6 @@ export function CrashGraphProvider({
       plot,
       progress,
       reducedMotion,
-      multiplier,
       xAxisTicks,
       yAxisTicks,
       visual,

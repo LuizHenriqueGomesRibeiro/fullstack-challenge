@@ -4,6 +4,7 @@ const EXPONENTIAL_SCALE_STRENGTH = 1.35;
 const DEFAULT_GRAPH_HEIGHT_PX = 214;
 const DEFAULT_GRAPH_DURATION_SECONDS = 8;
 const MIN_AXIS_MAX_MULTIPLIER = 10;
+const MAX_AXIS_MAX_MULTIPLIER = 20;
 const TARGET_TICK_SPACING_PX = 56;
 const TARGET_TIME_TICK_SPACING_PX = 92;
 
@@ -50,8 +51,10 @@ export function getCrashGraphAxisMaxMultiplierBp(
     multiplier * (1 + 1 / (desiredTickCount + 1)),
   );
   const step = getNiceStep(rawAxisMax / desiredTickCount);
-
-  return Math.ceil(rawAxisMax / step) * step * 100;
+  return Math.min(
+    MAX_AXIS_MAX_MULTIPLIER * 100,
+    Math.ceil(rawAxisMax / step) * step * 100,
+  );
 }
 
 export function scaleCrashGraphMultiplier(
@@ -79,7 +82,10 @@ export function getCrashGraphYAxisTickValues(
   axisMaxMultiplierBp: number,
   graphHeightPx = DEFAULT_GRAPH_HEIGHT_PX,
 ) {
-  const axisMaxMultiplier = Math.max(MIN_AXIS_MAX_MULTIPLIER, axisMaxMultiplierBp / 100);
+  const axisMaxMultiplier = Math.min(
+    MAX_AXIS_MAX_MULTIPLIER,
+    Math.max(MIN_AXIS_MAX_MULTIPLIER, axisMaxMultiplierBp / 100),
+  );
   const desiredTickCount = getDesiredYAxisTickCount(graphHeightPx);
   const step = getNiceStep(axisMaxMultiplier / desiredTickCount);
   const ticks: Array<{ label: string; multiplier: number }> = [];

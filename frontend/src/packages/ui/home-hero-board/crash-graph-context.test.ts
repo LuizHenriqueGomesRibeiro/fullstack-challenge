@@ -4,7 +4,6 @@ import {
   buildCrashCurvePlot,
   buildXAxisTicks,
   buildYAxisTicks,
-  floorY,
   GRAPH_WIDTH,
   PLOT,
   plotWidth,
@@ -54,12 +53,11 @@ describe('crash graph curve generation', () => {
   });
 
   it('keeps the visual path within the chart bounds', () => {
-    const normal = buildCrashCurvePlot(1, 112, 'running');
-    const extended = buildCrashCurvePlot(1, 500, 'running');
+    const normal = buildCrashCurvePlot(1, 2000, 'running');
+    const extended = buildCrashCurvePlot(2.5, 2000, 'running');
 
     expect(normal.endX).toBeGreaterThanOrEqual(PLOT.left);
     expect(extended.endX).toBeLessThanOrEqual(GRAPH_WIDTH - PLOT.right);
-    expect(extended.endY).toBeLessThan(normal.endY);
     expect(extended.endY).toBeGreaterThan(PLOT.top);
   });
 
@@ -72,16 +70,16 @@ describe('crash graph curve generation', () => {
     expect(freezeCrashGraphProgress(2.1, 112)).toBe(2.1);
   });
 
-  it('anchors the marker height to the current multiplier', () => {
-    const early = buildCrashCurvePlot(1.12, 112, 'running');
-    const higher = buildCrashCurvePlot(1.12, 500, 'running');
+  it('advances the marker height smoothly as progress grows', () => {
+    const early = buildCrashCurvePlot(0.48, 2000, 'running');
+    const later = buildCrashCurvePlot(1.18, 2000, 'running');
 
-    expect(early.endY).toBeGreaterThan(floorY - 28);
-    expect(higher.endY).toBeLessThan(early.endY);
+    expect(early.endY).toBeGreaterThan(PLOT.top + 120);
+    expect(later.endY).toBeLessThan(early.endY);
   });
 
   it('places mid-range multipliers past the halfway point in time', () => {
-    const plot = buildCrashCurvePlot(1.12, 568, 'running');
+    const plot = buildCrashCurvePlot(2.2, 2000, 'running');
 
     expect(plot.endX).toBeGreaterThan(PLOT.left + plotWidth * 0.5);
   });
@@ -103,6 +101,12 @@ describe('crash graph curve generation', () => {
       '12.50x',
       '15.00x',
     ]);
+  });
+
+  it('caps the y axis at 20x', () => {
+    const ticks = buildYAxisTicks(2000, 336);
+
+    expect(ticks.map((tick) => tick.label).at(-1)).toBe('20.00x');
   });
 
   it('densifies the tick grid when the graph has more vertical room', () => {
