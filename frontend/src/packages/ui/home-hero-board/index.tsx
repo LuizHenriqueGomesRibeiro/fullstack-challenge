@@ -4,7 +4,6 @@ import {
   GRAPH_HEIGHT,
   GRAPH_WIDTH,
   PLOT,
-  Y_AXIS_TICKS,
   baselineStartX,
   floorY,
   plotWidth,
@@ -101,6 +100,7 @@ function CrashGraphSvg({
     markerGradientId,
     phase,
     plot,
+    yAxisTicks,
     visual,
   } = useCrashGraph();
 
@@ -160,7 +160,7 @@ function CrashGraphSvg({
         </defs>
 
         <g className="graph-y-axis" aria-hidden="true">
-          {Y_AXIS_TICKS.map((tick) => (
+          {yAxisTicks.map((tick) => (
             <g className="graph-y-axis-row" key={tick.label}>
               <line
                 className="graph-y-axis-guide"

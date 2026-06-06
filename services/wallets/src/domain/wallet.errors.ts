@@ -19,7 +19,7 @@ export function invalidWalletAmount(): WalletDomainError {
 export function walletNotFound(playerId: string): WalletDomainError {
   return new WalletDomainError(
     "WALLET_NOT_FOUND",
-    `Wallet not found for player ${playerId}.`,
+    `Carteira do usuário ${playerId} não encontrada.`,
     404,
   );
 }
@@ -27,7 +27,7 @@ export function walletNotFound(playerId: string): WalletDomainError {
 export function insufficientFunds(): WalletDomainError {
   return new WalletDomainError(
     "WALLET_INSUFFICIENT_FUNDS",
-    "Wallet balance is not enough for this debit.",
+    "Sem saldo suficiente.",
     409,
   );
 }

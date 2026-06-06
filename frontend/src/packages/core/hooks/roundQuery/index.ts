@@ -1,7 +1,8 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { PlayerIdentity } from "../auth/oidc";
 import { gamesApi } from "../../zodios/api";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { calculateCrashGraphProgress } from "../../utils/crash-graph";
 
 export function useRoundQueryOptions() {
   return queryOptions({
@@ -11,8 +12,24 @@ export function useRoundQueryOptions() {
   });
 } 
 
+export function calculateGraphProgress(liveMultiplierBp: number) {
+  return calculateCrashGraphProgress(liveMultiplierBp);
+}
+
+function calculateRunningGraphProgress(
+  baseProgress: number,
+  elapsedMs: number,
+) {
+  const ramp = 1 - Math.exp(-elapsedMs / 420);
+  const drift = (elapsedMs / 1800) * (0.42 + 0.58 * ramp);
+  return baseProgress + drift;
+}
+
 export default function useRoundQuery(player: PlayerIdentity) {
   const [now, setNow] = useState(() => Date.now());
+  const [graphProgress, setGraphProgress] = useState(0);
+  const graphFrameRef = useRef<number | null>(null);
+  const graphStartTimeRef = useRef<number | null>(null);
 
   const roundQuery = useQuery(
     useRoundQueryOptions()
@@ -47,10 +64,45 @@ export default function useRoundQuery(player: PlayerIdentity) {
 
   const liveMultiplierBp = round?.currentMultiplierBp ?? 100;
 
-  const graphProgress = Math.min(
-    Math.max(Math.log(Math.max(liveMultiplierBp / 100, 1)) / Math.log(10), 0),
-    1,
-  );
+  useEffect(() => {
+    if (graphFrameRef.current !== null) {
+      window.cancelAnimationFrame(graphFrameRef.current);
+      graphFrameRef.current = null;
+    }
+
+    if (!round || phase === 'betting') {
+      graphStartTimeRef.current = null;
+      setGraphProgress(0);
+      return;
+    }
+
+    const initialProgress = calculateGraphProgress(liveMultiplierBp);
+    graphStartTimeRef.current = performance.now();
+    setGraphProgress(initialProgress);
+
+    if (phase === 'crashed') {
+      setGraphProgress(calculateGraphProgress(liveMultiplierBp));
+      return;
+    }
+
+    const step = (frameTime: number) => {
+      const startedAt = graphStartTimeRef.current ?? frameTime;
+      graphStartTimeRef.current = startedAt;
+      const elapsedMs = frameTime - startedAt;
+      const nextProgress = calculateRunningGraphProgress(initialProgress, elapsedMs);
+      setGraphProgress(nextProgress);
+      graphFrameRef.current = window.requestAnimationFrame(step);
+    };
+
+    graphFrameRef.current = window.requestAnimationFrame(step);
+
+    return () => {
+      if (graphFrameRef.current !== null) {
+        window.cancelAnimationFrame(graphFrameRef.current);
+        graphFrameRef.current = null;
+      }
+    };
+  }, [phase, round?.id, round?.startedAt]);
 
   return {
     phase,

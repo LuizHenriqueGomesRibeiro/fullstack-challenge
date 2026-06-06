@@ -23,6 +23,18 @@ type Story = StoryObj<typeof meta>
 
 export const Running: Story = {}
 
+export const RunningHigh: Story = {
+  args: {
+    multiplierLabel: '11.84x',
+    multiplierBp: 1184,
+    phase: 'running',
+    phaseLabel: 'Rodada em andamento',
+    countdownLabel: '00:03',
+    crashPointLabel: '18.00x',
+    graphProgress: 2.8,
+  },
+}
+
 export const Betting: Story = {
   args: {
     multiplierLabel: '1.00x',

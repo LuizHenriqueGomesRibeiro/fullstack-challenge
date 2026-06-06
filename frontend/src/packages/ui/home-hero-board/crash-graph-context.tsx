@@ -16,6 +16,12 @@ import {
   useSpring,
   useSpringValue,
 } from '@react-spring/web';
+import {
+  getCrashGraphAxisMaxMultiplierBp,
+  getCrashGraphYAxisTickValues,
+  exponentialCurveProgress,
+  scaleCrashGraphMultiplier,
+} from '../../core/utils/crash-graph';
 
 export const GRAPH_WIDTH = 720;
 export const GRAPH_HEIGHT = 280;
@@ -30,13 +36,6 @@ export const plotWidth = GRAPH_WIDTH - PLOT.left - PLOT.right;
 export const plotHeight = GRAPH_HEIGHT - PLOT.top - PLOT.bottom;
 export const floorY = GRAPH_HEIGHT - PLOT.bottom;
 export const baselineStartX = PLOT.left;
-export const Y_AXIS_TICKS = [
-  { label: '10x', y: PLOT.top + 2 },
-  { label: '5x', y: PLOT.top + plotHeight * 0.32 },
-  { label: '2x', y: PLOT.top + plotHeight * 0.66 },
-  { label: '1x', y: floorY },
-];
-
 export type CrashGraphPhase = 'betting' | 'running' | 'crashed';
 
 export type CrashCurvePlot = {
@@ -93,6 +92,7 @@ type CrashGraphContextValue = {
   progress: SpringValue<number>;
   visual: SpringValues<CrashGraphVisualState>;
   plot: CrashGraphAnimatedPlot;
+  yAxisTicks: Array<{ label: string; y: number }>;
   curveGradientId: string;
   areaGradientId: string;
   markerGradientId: string;
@@ -117,12 +117,10 @@ function smoothstep(edgeStart: number, edgeEnd: number, value: number) {
 }
 
 function exponentialEase(value: number, strength = 4.2) {
-  const normalized = clamp(value, 0, 1);
+  const normalized = Math.max(value, 0);
   if (normalized === 0) return 0;
-  if (normalized === 1) return 1;
 
-  const curve = Math.exp(strength * normalized) - 1;
-  return curve / (Math.exp(strength) - 1);
+  return 1 - Math.exp(-strength * normalized);
 }
 
 function buildExponentialCurvePath(
@@ -130,20 +128,32 @@ function buildExponentialCurvePath(
   startY: number,
   endX: number,
   endY: number,
-  segments = 28,
+  segments = 72,
 ) {
   const points: string[] = [];
   const step = Math.max(2, segments);
 
   for (let index = 0; index <= step; index += 1) {
     const t = index / step;
-    const eased = exponentialEase(t);
+    const eased = exponentialCurveProgress(t);
     const x = startX + (endX - startX) * t;
     const y = startY + (endY - startY) * eased;
     points.push(`${index === 0 ? 'M' : 'L'} ${point(x)} ${point(y)}`);
   }
 
   return points.join(' ');
+}
+
+export function buildYAxisTicks(axisMaxMultiplierBp: number) {
+  const axisMaxMultiplier = Math.max(10, axisMaxMultiplierBp / 100);
+
+  return getCrashGraphYAxisTickValues(axisMaxMultiplierBp).map((tick) => ({
+    label: tick.label,
+    y:
+      PLOT.top +
+      plotHeight *
+        (1 - scaleCrashGraphMultiplier(tick.multiplier, axisMaxMultiplier)),
+  }));
 }
 
 export function normalizeCrashGraphPhase(phase: string): CrashGraphPhase {
@@ -153,7 +163,11 @@ export function normalizeCrashGraphPhase(phase: string): CrashGraphPhase {
 
 function multiplierProgress(multiplierBp: number) {
   const multiplier = Math.max(1, multiplierBp / 100);
-  return clamp(Math.log(multiplier) / Math.log(10), 0, 1);
+  const axisMaxMultiplier = Math.max(
+    10,
+    getCrashGraphAxisMaxMultiplierBp(multiplierBp) / 100,
+  );
+  return 1 - Math.exp(-multiplier / axisMaxMultiplier);
 }
 
 export function resolveCrashGraphProgress(
@@ -162,7 +176,7 @@ export function resolveCrashGraphProgress(
   phase: string,
 ) {
   const graphPhase = normalizeCrashGraphPhase(phase);
-  const normalizedProgress = clamp(graphProgress, 0, 1);
+  const normalizedProgress = Math.max(graphProgress, 0);
   const multiplierLift = multiplierProgress(multiplierBp);
 
   if (graphPhase === 'betting') {
@@ -172,10 +186,10 @@ export function resolveCrashGraphProgress(
   const liveProgress = Math.max(normalizedProgress, multiplierLift * 0.9);
 
   if (graphPhase === 'crashed') {
-    return clamp(Math.max(liveProgress, 0.16), 0.12, 1);
+    return Math.max(liveProgress, 0.16);
   }
 
-  return clamp(Math.max(liveProgress, 0.05), 0.05, 1);
+  return Math.max(liveProgress, 0.05);
 }
 
 export function buildCrashCurvePlot(
@@ -183,7 +197,7 @@ export function buildCrashCurvePlot(
   multiplierBp: number,
   phase: CrashGraphPhase,
 ): CrashCurvePlot {
-  const normalizedProgress = clamp(progress, 0, 1);
+  const normalizedProgress = Math.max(progress, 0);
   const isBetting = phase === 'betting';
   const multiplierLift = multiplierProgress(multiplierBp);
 
@@ -218,10 +232,16 @@ export function buildCrashCurvePlot(
 
   const visualProgress = isBetting
     ? clamp(normalizedProgress, 0.08, 0.22)
-    : clamp(Math.max(normalizedProgress, multiplierLift * 0.86, 0.045), 0.045, 1);
+    : Math.max(
+        exponentialEase(normalizedProgress * 0.95),
+        multiplierLift * 0.86,
+        0.045,
+      );
   const curveProgress = isBetting ? visualProgress * 0.72 : visualProgress;
   const curveLift = exponentialEase(curveProgress);
-  const horizontalProgress = isBetting ? curveProgress : clamp(curveProgress, 0.05, 1);
+  const horizontalProgress = isBetting
+    ? curveProgress
+    : clamp(exponentialEase(curveProgress * 0.95), 0.05, 0.999);
   const endpointLift = isBetting
     ? clamp(0.028 + curveProgress * 0.065, 0.032, 0.05)
     : clamp(
@@ -364,6 +384,7 @@ export function CrashGraphProvider({
   const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const graphPhase = normalizeCrashGraphPhase(phase);
   const reducedMotion = Boolean(useReducedMotion());
+  const axisMaxMultiplierBp = getCrashGraphAxisMaxMultiplierBp(multiplierBp);
   const targetProgress = resolveCrashGraphProgress(
     graphProgress,
     multiplierBp,
@@ -374,6 +395,10 @@ export function CrashGraphProvider({
     immediate: reducedMotion,
   });
   const [visual, visualApi] = useSpring(() => phaseVisualTarget(graphPhase));
+  const yAxisTicks = useMemo(
+    () => buildYAxisTicks(axisMaxMultiplierBp),
+    [axisMaxMultiplierBp],
+  );
   const curveGradientId = `${reactId}-crash-curve`;
   const areaGradientId = `${reactId}-crash-area`;
   const markerGradientId = `${reactId}-crash-marker`;
@@ -382,6 +407,11 @@ export function CrashGraphProvider({
   useEffect(() => {
     if (reducedMotion) {
       progress.stop();
+      progress.set(targetProgress);
+      return;
+    }
+
+    if (graphPhase === 'running') {
       progress.set(targetProgress);
       return;
     }
@@ -506,6 +536,7 @@ export function CrashGraphProvider({
       progress,
       visual,
       plot,
+      yAxisTicks,
       curveGradientId,
       areaGradientId,
       markerGradientId,
@@ -521,6 +552,7 @@ export function CrashGraphProvider({
       plot,
       progress,
       reducedMotion,
+      yAxisTicks,
       visual,
     ],
   );

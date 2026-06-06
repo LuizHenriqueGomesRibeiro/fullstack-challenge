@@ -17,11 +17,6 @@ const apiBaseUrl = (env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(
   '',
 )
 
-const eventMetadataSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number(), z.boolean(), z.null()]),
-)
-
 const walletSchema = z.object({
   playerId: z.string(),
   username: z.string(),
