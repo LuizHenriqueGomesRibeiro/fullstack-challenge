@@ -162,7 +162,7 @@ export function normalizeCrashGraphPhase(phase: string): CrashGraphPhase {
 }
 
 function multiplierProgress(multiplierBp: number) {
-  const multiplier = Math.max(1, multiplierBp / 100);
+  const multiplier = Math.max(0, multiplierBp / 100 - 1);
   const axisMaxMultiplier = Math.max(
     10,
     getCrashGraphAxisMaxMultiplierBp(multiplierBp) / 100,
@@ -185,11 +185,7 @@ export function resolveCrashGraphProgress(
 
   const liveProgress = Math.max(normalizedProgress, multiplierLift * 0.9);
 
-  if (graphPhase === 'crashed') {
-    return Math.max(liveProgress, 0.16);
-  }
-
-  return Math.max(liveProgress, 0.05);
+  return liveProgress;
 }
 
 export function buildCrashCurvePlot(
@@ -235,13 +231,12 @@ export function buildCrashCurvePlot(
     : Math.max(
         exponentialEase(normalizedProgress * 0.95),
         multiplierLift * 0.86,
-        0.045,
       );
   const curveProgress = isBetting ? visualProgress * 0.72 : visualProgress;
   const curveLift = exponentialEase(curveProgress);
   const horizontalProgress = isBetting
     ? curveProgress
-    : clamp(exponentialEase(curveProgress * 0.95), 0.05, 0.999);
+    : clamp(exponentialEase(curveProgress * 0.95), 0, 0.999);
   const endpointLift = isBetting
     ? clamp(0.028 + curveProgress * 0.065, 0.032, 0.05)
     : clamp(

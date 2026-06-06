@@ -20,6 +20,13 @@ describe('crash graph curve generation', () => {
     expect(plot.markerY).toBe(plot.endY);
   });
 
+  it('starts the running curve at the left edge of the plot', () => {
+    const plot = buildCrashCurvePlot(0, 100, 'running');
+
+    expect(plot.endX).toBe(plot.startX);
+    expect(plot.markerX).toBe(plot.startX);
+  });
+
   it('starts gently and accelerates toward the end of the curve', () => {
     const plot = buildCrashCurvePlot(0.62, 248, 'running');
     const points = plot.curvePath.match(/(?:M|L)\s+[-0-9.]+\s+[-0-9.]+/g) ?? [];
