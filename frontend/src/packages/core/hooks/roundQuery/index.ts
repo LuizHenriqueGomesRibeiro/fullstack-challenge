@@ -23,7 +23,7 @@ function calculateRunningGraphProgress(
   baseProgress: number,
   elapsedMs: number,
 ) {
-  const driftPerMs = 1 / 2800;
+  const driftPerMs = 1 / 1000;
   return baseProgress + elapsedMs * driftPerMs;
 }
 

@@ -66,6 +66,10 @@ describe('crash graph curve generation', () => {
     expect(resolveCrashGraphProgress(2.3, 120_000, 'running')).toBeGreaterThan(1);
   });
 
+  it('maps 20x to the end of the 8s axis', () => {
+    expect(calculateGraphProgress(2_000)).toBeCloseTo(8, 6);
+  });
+
   it('does not rewind the graph when the round crashes', () => {
     expect(freezeCrashGraphProgress(2.1, 112)).toBe(2.1);
   });
@@ -79,7 +83,7 @@ describe('crash graph curve generation', () => {
   });
 
   it('places mid-range multipliers past the halfway point in time', () => {
-    const plot = buildCrashCurvePlot(2.2, 2000, 'running');
+    const plot = buildCrashCurvePlot(4.2, 2000, 'running');
 
     expect(plot.endX).toBeGreaterThan(PLOT.left + plotWidth * 0.5);
   });
@@ -129,26 +133,26 @@ describe('crash graph curve generation', () => {
   });
 
   it('renders the x axis as elapsed time', () => {
-    const compact = buildXAxisTicks(3.75, 420);
-    const roomy = buildXAxisTicks(3.75, 760);
+    const compact = buildXAxisTicks(8, 420);
+    const roomy = buildXAxisTicks(8, 760);
 
     expect(compact.map((tick) => tick.label)).toEqual([
       '0s',
-      '1s',
       '2s',
-      '3s',
-      '3.75s',
+      '4s',
+      '6s',
+      '8s',
     ]);
     expect(roomy.map((tick) => tick.label)).toEqual([
       '0s',
-      '0.5s',
       '1s',
-      '1.5s',
       '2s',
-      '2.5s',
       '3s',
-      '3.5s',
-      '3.75s',
+      '4s',
+      '5s',
+      '6s',
+      '7s',
+      '8s',
     ]);
   });
 });

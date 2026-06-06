@@ -12,6 +12,7 @@ const meta = {
     phaseLabel: 'Rodada em andamento',
     countdownLabel: '00:14',
     crashPointLabel: '3.91x',
+    crashDurationLabel: '1.23s',
     serverSeedHashLabel: 'a1b2c3d4e5f67890abcdef1234567890',
     graphProgress: 0.52,
   },
@@ -31,6 +32,7 @@ export const RunningHigh: Story = {
     phaseLabel: 'Rodada em andamento',
     countdownLabel: '00:03',
     crashPointLabel: '20.00x',
+    crashDurationLabel: '8.00s',
     graphProgress: 2.8,
   },
 }
@@ -43,6 +45,7 @@ export const Betting: Story = {
     phaseLabel: 'Aguardando apostas',
     countdownLabel: '00:07',
     crashPointLabel: '2.14x',
+    crashDurationLabel: '0.48s',
     graphProgress: 0.12,
   },
 }
@@ -55,6 +58,7 @@ export const Crashed: Story = {
     phaseLabel: 'Crash ocorrido',
     countdownLabel: 'CRASH',
     crashPointLabel: '3.72x',
+    crashDurationLabel: '1.15s',
     graphProgress: 1,
   },
 }

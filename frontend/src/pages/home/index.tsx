@@ -20,6 +20,7 @@ export default function HomePage({ player }: { player: PlayerIdentity }) {
       multiplierBp={controller.liveMultiplierBp}
       phaseLabel={controller.phaseLabel(controller.phase)}
       countdownLabel={controller.countdownLabel}
+      crashDurationLabel={controller.crashDurationLabel}
       graphProgress={controller.graphProgress}
       phase={controller.phase}
     />

@@ -16,6 +16,7 @@ type HomeHeroBoardProps = {
   phase: string;
   phaseLabel: string;
   countdownLabel: string;
+  crashDurationLabel: string;
   crashPointLabel: string;
   serverSeedHashLabel: string;
   graphProgress: number;
@@ -27,6 +28,7 @@ export default function HomeHeroBoard({
   phase,
   phaseLabel,
   countdownLabel,
+  crashDurationLabel,
   crashPointLabel,
   serverSeedHashLabel,
   graphProgress,
@@ -40,6 +42,7 @@ export default function HomeHeroBoard({
       <HomeHeroBoardContent
         crashPointLabel={crashPointLabel}
         countdownLabel={countdownLabel}
+        crashDurationLabel={crashDurationLabel}
         multiplierLabel={multiplierLabel}
         phase={phase}
         phaseLabel={phaseLabel}
@@ -54,6 +57,7 @@ function HomeHeroBoardContent({
   phase,
   phaseLabel,
   countdownLabel,
+  crashDurationLabel,
   crashPointLabel,
   serverSeedHashLabel,
 }: Omit<HomeHeroBoardProps, 'multiplierBp' | 'graphProgress'>) {
@@ -76,6 +80,7 @@ function HomeHeroBoardContent({
       <CrashGraphSvg
         multiplierLabel={multiplierLabel}
         crashPointLabel={crashPointLabel}
+        crashDurationLabel={crashDurationLabel}
       />
 
       <div className="seed-strip">
@@ -89,9 +94,11 @@ function HomeHeroBoardContent({
 function CrashGraphSvg({
   multiplierLabel,
   crashPointLabel,
+  crashDurationLabel,
 }: {
   multiplierLabel: string;
   crashPointLabel: string;
+  crashDurationLabel: string;
 }) {
   const {
     areaGradientId,
@@ -321,7 +328,9 @@ function CrashGraphSvg({
 
       <div className="graph-floor">
         <span>tempo até 10x</span>
-        <span>{crashPointLabel} · 3.75s</span>
+        <span>
+          {crashPointLabel} · {crashDurationLabel}
+        </span>
       </div>
     </div>
   );

@@ -149,15 +149,13 @@ export function getCrashGraphXAxisTickValues(
 
 export function calculateCrashGraphProgress(liveMultiplierBp: number) {
   const multiplier = Math.max(1, liveMultiplierBp / 100);
-  const axisMaxMultiplier = Math.max(
-    MIN_AXIS_MAX_MULTIPLIER,
-    getCrashGraphAxisMaxMultiplierBp(liveMultiplierBp) / 100,
+  const normalized = clamp(
+    (multiplier - 1) / Math.max(MAX_AXIS_MAX_MULTIPLIER - 1, 1),
+    0,
+    1,
   );
 
-  return Math.expm1(
-    scaleCrashGraphMultiplier(multiplier, axisMaxMultiplier) *
-      EXPONENTIAL_SCALE_STRENGTH,
-  );
+  return normalized * DEFAULT_GRAPH_DURATION_SECONDS;
 }
 
 export function freezeCrashGraphProgress(

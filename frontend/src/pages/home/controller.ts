@@ -11,6 +11,21 @@ import { formatCents, formatMultiplier, payoutForMultiplier } from "@crash/contr
 import { PlayerIdentity } from "src/packages/core/hooks/auth/oidc";
 import { useState } from "react";
 
+const GRAPH_DURATION_SECONDS = 8;
+const MAX_GRAPH_MULTIPLIER = 20;
+
+function formatCrashDurationLabel(crashPointBp?: number) {
+  if (!crashPointBp) return `${GRAPH_DURATION_SECONDS.toFixed(2)}s`;
+
+  const multiplier = Math.max(1, crashPointBp / 100);
+  const normalized = Math.min(
+    Math.max((multiplier - 1) / Math.max(MAX_GRAPH_MULTIPLIER - 1, 1), 0),
+    1,
+  );
+
+  return `${(normalized * GRAPH_DURATION_SECONDS).toFixed(2)}s`;
+}
+
 export default function useHomePageController(player: PlayerIdentity) {
   const [betAmount, setBetAmount] = useState('10,00');
   const [notice, setNotice] = useState<string | null>(null);
@@ -47,6 +62,7 @@ export default function useHomePageController(player: PlayerIdentity) {
     phase === 'betting'
       ? `${Math.ceil(bettingTimeLeftMs / 1000)}s`
       : formatMultiplier(liveMultiplierBp);
+  const crashDurationLabel = formatCrashDurationLabel(round?.crashPointBp);
 
   const reservationMessage = reservedBet
     ? `Sua aposta: ${formatCents(reservedBet.amountCents)} aguardando saque.`
@@ -100,6 +116,7 @@ export default function useHomePageController(player: PlayerIdentity) {
     notice,
     round,
     phase,
+    crashDurationLabel,
     handlePlaceBet,
     handleCashout,
     setBetAmount,
