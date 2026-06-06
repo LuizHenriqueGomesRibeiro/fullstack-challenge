@@ -11,7 +11,7 @@
     "docker:down": "docker compose down",
     "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f",
     "prepare": "husky",
-    "commit": "npm run test:all && git add . && node scripts/run-commit.cjs",
+    "commit": "bun run test:all && git add . && node scripts/run-commit.cjs",
     "test:games:unit": "bun scripts/test-runner.ts games:unit",
     "test:games:e2e": "bun scripts/test-runner.ts games:e2e",
     "test:wallets:unit": "bun scripts/test-runner.ts wallets:unit",

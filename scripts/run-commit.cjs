@@ -4,9 +4,9 @@
 const { spawnSync } = require('node:child_process');
 const { join } = require('node:path');
 
-const COMMIT_ENV = 'CRASH_GAME_NPM_COMMIT';
+const COMMIT_ENV = 'CRASH_GAME_BUN_COMMIT';
 const env = { ...process.env, [COMMIT_ENV]: '1' };
-// npm 11's npx path is broken in this workspace, so call the local binary directly.
+// Bun shelling into Commitizen via the local binary keeps the flow stable in this workspace.
 const commitizenBin = join(__dirname, '..', 'node_modules', 'commitizen', 'bin', 'git-cz.js');
 
 const result = spawnSync(process.execPath, [commitizenBin], {

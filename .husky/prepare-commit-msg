@@ -9,7 +9,7 @@ case "$source" in
     ;;
 esac
 
-if [ "${CRASH_GAME_NPM_COMMIT:-0}" = "1" ]; then
+if [ "${CRASH_GAME_BUN_COMMIT:-0}" = "1" ]; then
   exit 0
 fi
 
