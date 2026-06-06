@@ -4,6 +4,8 @@ node_modules/
 # Environment
 .env
 !.env.example
+!services/games/.env
+!services/wallets/.env
 
 # Build output
 dist/
