@@ -326,8 +326,10 @@ h1 {
 }
 
 .graph-y-axis-line,
+.graph-x-axis-line,
 .graph-y-axis-tick,
-.graph-y-axis-guide {
+.graph-y-axis-guide,
+.graph-x-axis-tick {
   fill: none;
   vector-effect: non-scaling-stroke;
 }
@@ -350,8 +352,27 @@ h1 {
   stroke-width: 1;
 }
 
+.graph-x-axis-line {
+  stroke: rgba(255, 249, 216, 0.28);
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.graph-x-axis-tick {
+  stroke: rgba(255, 249, 216, 0.42);
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
 .graph-y-axis-label {
   fill: rgba(255, 249, 216, 0.7);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.graph-x-axis-label {
+  fill: rgba(255, 249, 216, 0.62);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0;

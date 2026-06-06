@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   buildCrashCurvePlot,
+  buildXAxisTicks,
   buildYAxisTicks,
   floorY,
   GRAPH_WIDTH,
@@ -78,18 +79,65 @@ describe('crash graph curve generation', () => {
     expect(higher.endY).toBeLessThan(early.endY);
   });
 
-  it('raises the y axis ceiling when multipliers grow', () => {
-    const ticks = buildYAxisTicks(2000);
-    const labels = ticks.map((tick) => tick.label);
+  it('expands the y axis more smoothly than fixed 10x steps', () => {
+    const compact = buildYAxisTicks(1500, 196);
+    const roomy = buildYAxisTicks(1500, 336);
 
-    expect(labels).toContain('20x');
-    expect(labels[labels.length - 1]).toBe('20x');
+    expect(compact.map((tick) => tick.label)).toEqual([
+      '5.00x',
+      '10.00x',
+      '15.00x',
+    ]);
+    expect(roomy.map((tick) => tick.label)).toEqual([
+      '2.50x',
+      '5.00x',
+      '7.50x',
+      '10.00x',
+      '12.50x',
+      '15.00x',
+    ]);
   });
 
-  it('places 5x at the middle of a 10x axis', () => {
-    const ticks = buildYAxisTicks(1000);
-    const tick = ticks.find((entry) => entry.label === '5x');
+  it('densifies the tick grid when the graph has more vertical room', () => {
+    const compact = buildYAxisTicks(1000, 196);
+    const roomy = buildYAxisTicks(1000, 336);
 
-    expect(tick?.y).toBeCloseTo((PLOT.top + floorY) / 2, 6);
+    expect(compact.map((tick) => tick.label)).toEqual([
+      '2.50x',
+      '5.00x',
+      '7.50x',
+      '10.00x',
+    ]);
+    expect(roomy.map((tick) => tick.label)).toEqual([
+      '2.00x',
+      '4.00x',
+      '6.00x',
+      '8.00x',
+      '10.00x',
+    ]);
+  });
+
+  it('renders the x axis as elapsed time', () => {
+    const compact = buildXAxisTicks(8, 420);
+    const roomy = buildXAxisTicks(8, 760);
+
+    expect(compact.map((tick) => tick.label)).toEqual([
+      '0s',
+      '2s',
+      '4s',
+      '6s',
+      '8s',
+    ]);
+    expect(roomy.map((tick) => tick.label)).toEqual([
+      '0s',
+      '1s',
+      '2s',
+      '3s',
+      '4s',
+      '5s',
+      '6s',
+      '7s',
+      '8s',
+    ]);
   });
 });

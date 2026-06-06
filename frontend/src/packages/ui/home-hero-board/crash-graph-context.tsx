@@ -18,6 +18,7 @@ import {
 } from '@react-spring/web';
 import {
   getCrashGraphAxisMaxMultiplierBp,
+  getCrashGraphXAxisTickValues,
   getCrashGraphYAxisTickValues,
   exponentialCurveProgress,
   scaleCrashGraphMultiplier,
@@ -36,6 +37,7 @@ export const plotWidth = GRAPH_WIDTH - PLOT.left - PLOT.right;
 export const plotHeight = GRAPH_HEIGHT - PLOT.top - PLOT.bottom;
 export const floorY = GRAPH_HEIGHT - PLOT.bottom;
 export const baselineStartX = PLOT.left;
+const GRAPH_DURATION_SECONDS = 8;
 export type CrashGraphPhase = 'betting' | 'running' | 'crashed';
 
 export type CrashCurvePlot = {
@@ -93,6 +95,7 @@ type CrashGraphContextValue = {
   visual: SpringValues<CrashGraphVisualState>;
   plot: CrashGraphAnimatedPlot;
   yAxisTicks: Array<{ label: string; y: number }>;
+  xAxisTicks: Array<{ label: string; x: number }>;
   curveGradientId: string;
   areaGradientId: string;
   markerGradientId: string;
@@ -144,15 +147,30 @@ function buildExponentialCurvePath(
   return points.join(' ');
 }
 
-export function buildYAxisTicks(axisMaxMultiplierBp: number) {
+export function buildYAxisTicks(
+  axisMaxMultiplierBp: number,
+  graphHeightPx = plotHeight,
+) {
   const axisMaxMultiplier = Math.max(10, axisMaxMultiplierBp / 100);
 
-  return getCrashGraphYAxisTickValues(axisMaxMultiplierBp).map((tick) => ({
+  return getCrashGraphYAxisTickValues(axisMaxMultiplierBp, graphHeightPx).map((tick) => ({
     label: tick.label,
     y:
       PLOT.top +
       plotHeight *
         (1 - clamp(tick.multiplier / axisMaxMultiplier, 0, 1)),
+  }));
+}
+
+export function buildXAxisTicks(
+  durationSeconds = GRAPH_DURATION_SECONDS,
+  graphWidthPx = plotWidth,
+) {
+  const ticks = getCrashGraphXAxisTickValues(durationSeconds, graphWidthPx);
+
+  return ticks.map((tick) => ({
+    label: tick.label,
+    x: PLOT.left + plotWidth * clamp(tick.seconds / Math.max(durationSeconds, 1), 0, 1),
   }));
 }
 
@@ -165,7 +183,7 @@ function multiplierProgress(multiplierBp: number) {
   const multiplier = Math.max(0, multiplierBp / 100 - 1);
   const axisMaxMultiplier = Math.max(
     10,
-    getCrashGraphAxisMaxMultiplierBp(multiplierBp) / 100,
+    getCrashGraphAxisMaxMultiplierBp(multiplierBp, plotHeight) / 100,
   );
   return 1 - Math.exp(-multiplier / axisMaxMultiplier);
 }
@@ -174,7 +192,7 @@ function multiplierAxisLift(multiplierBp: number) {
   const multiplier = Math.max(1, multiplierBp / 100);
   const axisMaxMultiplier = Math.max(
     10,
-    getCrashGraphAxisMaxMultiplierBp(multiplierBp) / 100,
+    getCrashGraphAxisMaxMultiplierBp(multiplierBp, plotHeight) / 100,
   );
 
   return clamp(multiplier / axisMaxMultiplier, 0, 1);
@@ -389,7 +407,10 @@ export function CrashGraphProvider({
   const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const graphPhase = normalizeCrashGraphPhase(phase);
   const reducedMotion = Boolean(useReducedMotion());
-  const axisMaxMultiplierBp = getCrashGraphAxisMaxMultiplierBp(multiplierBp);
+  const axisMaxMultiplierBp = getCrashGraphAxisMaxMultiplierBp(
+    multiplierBp,
+    plotHeight,
+  );
   const targetProgress = resolveCrashGraphProgress(
     graphProgress,
     multiplierBp,
@@ -401,8 +422,12 @@ export function CrashGraphProvider({
   });
   const [visual, visualApi] = useSpring(() => phaseVisualTarget(graphPhase));
   const yAxisTicks = useMemo(
-    () => buildYAxisTicks(axisMaxMultiplierBp),
+    () => buildYAxisTicks(axisMaxMultiplierBp, plotHeight),
     [axisMaxMultiplierBp],
+  );
+  const xAxisTicks = useMemo(
+    () => buildXAxisTicks(GRAPH_DURATION_SECONDS, plotWidth),
+    [],
   );
   const curveGradientId = `${reactId}-crash-curve`;
   const areaGradientId = `${reactId}-crash-area`;
@@ -512,6 +537,7 @@ export function CrashGraphProvider({
       visual,
       plot,
       yAxisTicks,
+      xAxisTicks,
       curveGradientId,
       areaGradientId,
       markerGradientId,
@@ -527,6 +553,7 @@ export function CrashGraphProvider({
       plot,
       progress,
       reducedMotion,
+      xAxisTicks,
       yAxisTicks,
       visual,
     ],

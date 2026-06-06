@@ -74,8 +74,8 @@ function HomeHeroBoardContent({
       </div>
 
       <CrashGraphSvg
-        crashPointLabel={crashPointLabel}
         multiplierLabel={multiplierLabel}
+        crashPointLabel={crashPointLabel}
       />
 
       <div className="seed-strip">
@@ -100,6 +100,7 @@ function CrashGraphSvg({
     markerGradientId,
     phase,
     plot,
+    xAxisTicks,
     yAxisTicks,
     visual,
   } = useCrashGraph();
@@ -193,6 +194,35 @@ function CrashGraphSvg({
             y1={PLOT.top}
             y2={floorY}
           />
+        </g>
+
+        <g className="graph-x-axis" aria-hidden="true">
+          <line
+            className="graph-x-axis-line"
+            x1={PLOT.left}
+            x2={PLOT.left + plotWidth}
+            y1={floorY}
+            y2={floorY}
+          />
+          {xAxisTicks.map((tick) => (
+            <g className="graph-x-axis-row" key={tick.label}>
+              <line
+                className="graph-x-axis-tick"
+                x1={tick.x}
+                x2={tick.x}
+                y1={floorY}
+                y2={floorY + 7}
+              />
+              <text
+                className="graph-x-axis-label"
+                textAnchor="middle"
+                x={tick.x}
+                y={floorY + 24}
+              >
+                {tick.label}
+              </text>
+            </g>
+          ))}
         </g>
 
         <animated.g className="graph-stage" transform={plot.stageTransform}>
@@ -290,8 +320,8 @@ function CrashGraphSvg({
       </svg>
 
       <div className="graph-floor">
-        <span>1.00x</span>
-        <span>{crashPointLabel}</span>
+        <span>tempo</span>
+        <span>{crashPointLabel} em 8s</span>
       </div>
     </div>
   );

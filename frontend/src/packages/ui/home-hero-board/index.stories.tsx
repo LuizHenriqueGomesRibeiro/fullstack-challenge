@@ -30,7 +30,7 @@ export const RunningHigh: Story = {
     phase: 'running',
     phaseLabel: 'Rodada em andamento',
     countdownLabel: '00:03',
-    crashPointLabel: '18.00x',
+    crashPointLabel: '20.00x',
     graphProgress: 2.8,
   },
 }
