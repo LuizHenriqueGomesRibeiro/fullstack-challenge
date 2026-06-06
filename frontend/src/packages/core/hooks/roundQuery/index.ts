@@ -20,9 +20,8 @@ function calculateRunningGraphProgress(
   baseProgress: number,
   elapsedMs: number,
 ) {
-  const ramp = 1 - Math.exp(-elapsedMs / 420);
-  const drift = (elapsedMs / 1800) * (0.42 + 0.58 * ramp);
-  return baseProgress + drift;
+  const driftPerMs = 1 / 2800;
+  return baseProgress + elapsedMs * driftPerMs;
 }
 
 export default function useRoundQuery(player: PlayerIdentity) {

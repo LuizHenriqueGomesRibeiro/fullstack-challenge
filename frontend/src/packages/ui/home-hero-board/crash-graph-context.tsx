@@ -152,7 +152,7 @@ export function buildYAxisTicks(axisMaxMultiplierBp: number) {
     y:
       PLOT.top +
       plotHeight *
-        (1 - scaleCrashGraphMultiplier(tick.multiplier, axisMaxMultiplier)),
+        (1 - clamp(tick.multiplier / axisMaxMultiplier, 0, 1)),
   }));
 }
 
@@ -168,6 +168,16 @@ function multiplierProgress(multiplierBp: number) {
     getCrashGraphAxisMaxMultiplierBp(multiplierBp) / 100,
   );
   return 1 - Math.exp(-multiplier / axisMaxMultiplier);
+}
+
+function multiplierAxisLift(multiplierBp: number) {
+  const multiplier = Math.max(1, multiplierBp / 100);
+  const axisMaxMultiplier = Math.max(
+    10,
+    getCrashGraphAxisMaxMultiplierBp(multiplierBp) / 100,
+  );
+
+  return clamp(multiplier / axisMaxMultiplier, 0, 1);
 }
 
 export function resolveCrashGraphProgress(
@@ -233,14 +243,14 @@ export function buildCrashCurvePlot(
         multiplierLift * 0.86,
       );
   const curveProgress = isBetting ? visualProgress * 0.72 : visualProgress;
-  const curveLift = exponentialEase(curveProgress);
+  const axisLift = multiplierAxisLift(multiplierBp);
   const horizontalProgress = isBetting
     ? curveProgress
-    : clamp(exponentialEase(curveProgress * 0.95), 0, 0.999);
+    : clamp(normalizedProgress / 4.5, 0, 0.999);
   const endpointLift = isBetting
     ? clamp(0.028 + curveProgress * 0.065, 0.032, 0.05)
     : clamp(
-        0.03 + curveLift * 0.9 + multiplierLift * 0.085,
+        0.02 + axisLift * 0.94,
         0.048,
         phase === 'crashed' ? 0.98 : 0.94,
       );

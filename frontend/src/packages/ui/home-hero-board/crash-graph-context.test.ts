@@ -3,6 +3,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   buildCrashCurvePlot,
   buildYAxisTicks,
+  floorY,
   GRAPH_WIDTH,
   PLOT,
   resolveCrashGraphProgress,
@@ -27,6 +28,17 @@ describe('crash graph curve generation', () => {
     expect(plot.markerX).toBe(plot.startX);
   });
 
+  it('moves the marker horizontally at a steady pace', () => {
+    const first = buildCrashCurvePlot(0.5, 100, 'running');
+    const second = buildCrashCurvePlot(1.5, 100, 'running');
+    const third = buildCrashCurvePlot(2.5, 100, 'running');
+
+    const firstStep = second.endX - first.endX;
+    const secondStep = third.endX - second.endX;
+
+    expect(secondStep).toBeCloseTo(firstStep, 6);
+  });
+
   it('starts gently and accelerates toward the end of the curve', () => {
     const plot = buildCrashCurvePlot(0.62, 248, 'running');
     const points = plot.curvePath.match(/(?:M|L)\s+[-0-9.]+\s+[-0-9.]+/g) ?? [];
@@ -39,11 +51,11 @@ describe('crash graph curve generation', () => {
   });
 
   it('keeps the visual path within the chart bounds', () => {
-    const normal = buildCrashCurvePlot(1, 248, 'running');
-    const extended = buildCrashCurvePlot(2.5, 248, 'running');
+    const normal = buildCrashCurvePlot(1, 112, 'running');
+    const extended = buildCrashCurvePlot(1, 500, 'running');
 
-    expect(extended.endX).toBeGreaterThan(normal.endX);
-    expect(extended.endX).toBeLessThan(GRAPH_WIDTH - PLOT.right);
+    expect(normal.endX).toBeGreaterThanOrEqual(PLOT.left);
+    expect(extended.endX).toBeLessThanOrEqual(GRAPH_WIDTH - PLOT.right);
     expect(extended.endY).toBeLessThan(normal.endY);
     expect(extended.endY).toBeGreaterThan(PLOT.top);
   });
@@ -53,11 +65,26 @@ describe('crash graph curve generation', () => {
     expect(resolveCrashGraphProgress(2.3, 120_000, 'running')).toBeGreaterThan(1);
   });
 
+  it('anchors the marker height to the current multiplier', () => {
+    const early = buildCrashCurvePlot(1.12, 112, 'running');
+    const higher = buildCrashCurvePlot(1.12, 500, 'running');
+
+    expect(early.endY).toBeGreaterThan(floorY - 28);
+    expect(higher.endY).toBeLessThan(early.endY);
+  });
+
   it('raises the y axis ceiling when multipliers grow', () => {
     const ticks = buildYAxisTicks(2000);
     const labels = ticks.map((tick) => tick.label);
 
     expect(labels).toContain('20x');
     expect(labels[labels.length - 1]).toBe('20x');
+  });
+
+  it('places 5x at the middle of a 10x axis', () => {
+    const ticks = buildYAxisTicks(1000);
+    const tick = ticks.find((entry) => entry.label === '5x');
+
+    expect(tick?.y).toBeCloseTo((PLOT.top + floorY) / 2, 6);
   });
 });
