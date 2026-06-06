@@ -12,10 +12,10 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_EXTRA_DATABASES: games,wallets
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -54,7 +54,7 @@ services:
     volumes:
       - ./docker/keycloak:/opt/keycloak/data/import:ro
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200\" <&3'"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -77,6 +77,10 @@ services:
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DNS_RESOLVER: 127.0.0.11
+      KONG_DNS_STALE_TTL: 0
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_DNS_ERROR_TTL: 1
     volumes:
       - ./docker/kong:/kong:ro
     healthcheck:
@@ -89,18 +93,25 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      games:
+        condition: service_healthy
+      wallets:
+        condition: service_healthy
 
   # ---------------------------------------------------------------------------
   # Games Service
   # ---------------------------------------------------------------------------
   games:
     build:
-      context: ./services/games
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/games/Dockerfile
     ports:
       - "4001:4001"
     env_file:
       - ./services/games/.env
+    environment:
+      OIDC_ISSUER: http://localhost:8080/realms/crash-game
+      OIDC_JWKS_URL: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,12 +129,15 @@ services:
   # ---------------------------------------------------------------------------
   wallets:
     build:
-      context: ./services/wallets
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/wallets/Dockerfile
     ports:
       - "4002:4002"
     env_file:
       - ./services/wallets/.env
+    environment:
+      OIDC_ISSUER: http://localhost:8080/realms/crash-game
+      OIDC_JWKS_URL: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy
@@ -139,14 +153,23 @@ services:
   # ---------------------------------------------------------------------------
   # Frontend (placeholder — candidate implements)
   # ---------------------------------------------------------------------------
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - kong
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+      VITE_OIDC_CLIENT_ID: crash-game-client
+      VITE_OIDC_ISSUER: http://localhost:8080/realms/crash-game
+    depends_on:
+      kong:
+        condition: service_healthy
+      games:
+        condition: service_healthy
+      wallets:
+        condition: service_healthy
 
 volumes:
   postgres_data:

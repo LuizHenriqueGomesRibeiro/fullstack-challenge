@@ -9,9 +9,25 @@
   "scripts": {
     "docker:up": "docker compose up",
     "docker:down": "docker compose down",
-    "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f"
+    "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f",
+    "prepare": "husky",
+    "commit": "bun run test:all && git add . && node scripts/run-commit.cjs",
+    "test:games:unit": "bun scripts/test-runner.ts games:unit",
+    "test:games:e2e": "bun scripts/test-runner.ts games:e2e",
+    "test:wallets:unit": "bun scripts/test-runner.ts wallets:unit",
+    "test:wallets:e2e": "bun scripts/test-runner.ts wallets:e2e",
+    "test:frontend": "bun scripts/test-runner.ts frontend",
+    "test:all": "bun scripts/test-runner.ts all"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./commitizen.cjs"
+    }
   },
   "devDependencies": {
-    "bun-types": "latest"
-  }
+    "bun-types": "latest",
+    "commitizen": "^4.3.1",
+    "husky": "^9.1.7"
+  },
+  "dependencies": {}
 }

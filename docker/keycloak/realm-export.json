@@ -43,6 +43,21 @@
           "temporary": false
         }
       ]
+    },
+    {
+      "username": "ranger",
+      "email": "ranger@crash-game.dev",
+      "firstName": "Second",
+      "lastName": "Player",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ranger123",
+          "temporary": false
+        }
+      ]
     }
   ]
 }

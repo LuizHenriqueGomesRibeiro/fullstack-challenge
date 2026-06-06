@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+set -eu
+
+source="${2:-}"
+
+case "$source" in
+  merge|squash|template)
+    exit 0
+    ;;
+esac
+
+if [ "${CRASH_GAME_BUN_COMMIT:-0}" = "1" ]; then
+  exit 0
+fi
+
+echo "Use 'bun run commit' instead of 'git commit'."
+exit 1

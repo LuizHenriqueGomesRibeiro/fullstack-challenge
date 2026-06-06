@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+set -eu
+
+if [ "${CRASH_GAME_BUN_COMMIT:-0}" = "1" ]; then
+  exit 0
+fi
+
+merge_head=$(git rev-parse --git-path MERGE_HEAD)
+cherry_pick_head=$(git rev-parse --git-path CHERRY_PICK_HEAD)
+revert_head=$(git rev-parse --git-path REVERT_HEAD)
+squash_msg=$(git rev-parse --git-path SQUASH_MSG)
+rebase_merge=$(git rev-parse --git-path rebase-merge)
+rebase_apply=$(git rev-parse --git-path rebase-apply)
+
+if [ -f "$merge_head" ] || [ -f "$cherry_pick_head" ] || [ -f "$revert_head" ] || [ -f "$squash_msg" ] || [ -d "$rebase_merge" ] || [ -d "$rebase_apply" ]; then
+  exit 0
+fi
+
+if git config --get commit.template >/dev/null 2>&1; then
+  exit 0
+fi
+
+echo "Use 'bun run commit' instead of 'git commit'."
+exit 1
