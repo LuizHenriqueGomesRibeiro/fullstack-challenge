@@ -30,8 +30,11 @@ function getNiceStep(value: number) {
 function formatTimeAxisLabel(seconds: number) {
   const normalized = Math.max(seconds, 0);
   const rounded = Math.abs(normalized - Math.round(normalized)) < 1e-9
-    ? Math.round(normalized)
-    : Number(normalized.toFixed(1));
+    ? `${Math.round(normalized)}`
+    : normalized
+        .toFixed(2)
+        .replace(/\.00$/, '')
+        .replace(/(\.\d)0$/, '$1');
 
   return `${rounded}s`;
 }

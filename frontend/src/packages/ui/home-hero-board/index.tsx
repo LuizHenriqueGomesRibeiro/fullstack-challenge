@@ -320,8 +320,8 @@ function CrashGraphSvg({
       </svg>
 
       <div className="graph-floor">
-        <span>tempo</span>
-        <span>{crashPointLabel} em 8s</span>
+        <span>tempo até 10x</span>
+        <span>{crashPointLabel} · 3.75s</span>
       </div>
     </div>
   );

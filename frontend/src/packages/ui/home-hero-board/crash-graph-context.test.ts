@@ -7,6 +7,7 @@ import {
   floorY,
   GRAPH_WIDTH,
   PLOT,
+  plotWidth,
   resolveCrashGraphProgress,
 } from './crash-graph-context';
 import { calculateGraphProgress } from '../../core/hooks/roundQuery';
@@ -79,6 +80,12 @@ describe('crash graph curve generation', () => {
     expect(higher.endY).toBeLessThan(early.endY);
   });
 
+  it('places mid-range multipliers past the halfway point in time', () => {
+    const plot = buildCrashCurvePlot(1.12, 568, 'running');
+
+    expect(plot.endX).toBeGreaterThan(PLOT.left + plotWidth * 0.5);
+  });
+
   it('expands the y axis more smoothly than fixed 10x steps', () => {
     const compact = buildYAxisTicks(1500, 196);
     const roomy = buildYAxisTicks(1500, 336);
@@ -118,26 +125,26 @@ describe('crash graph curve generation', () => {
   });
 
   it('renders the x axis as elapsed time', () => {
-    const compact = buildXAxisTicks(8, 420);
-    const roomy = buildXAxisTicks(8, 760);
+    const compact = buildXAxisTicks(3.75, 420);
+    const roomy = buildXAxisTicks(3.75, 760);
 
     expect(compact.map((tick) => tick.label)).toEqual([
-      '0s',
-      '2s',
-      '4s',
-      '6s',
-      '8s',
-    ]);
-    expect(roomy.map((tick) => tick.label)).toEqual([
       '0s',
       '1s',
       '2s',
       '3s',
-      '4s',
-      '5s',
-      '6s',
-      '7s',
-      '8s',
+      '3.75s',
+    ]);
+    expect(roomy.map((tick) => tick.label)).toEqual([
+      '0s',
+      '0.5s',
+      '1s',
+      '1.5s',
+      '2s',
+      '2.5s',
+      '3s',
+      '3.5s',
+      '3.75s',
     ]);
   });
 });

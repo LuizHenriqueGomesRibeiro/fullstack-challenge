@@ -37,7 +37,10 @@ export const plotWidth = GRAPH_WIDTH - PLOT.left - PLOT.right;
 export const plotHeight = GRAPH_HEIGHT - PLOT.top - PLOT.bottom;
 export const floorY = GRAPH_HEIGHT - PLOT.bottom;
 export const baselineStartX = PLOT.left;
-const GRAPH_DURATION_SECONDS = 8;
+const GRAPH_DURATION_SECONDS = 3.75;
+const VISUAL_TIME_EASING_POWER = 0.9;
+const RAW_SECONDS_AT_10X = (1000 - 100) / 250;
+const VISUAL_SECONDS_AT_10X = 3.75;
 export type CrashGraphPhase = 'betting' | 'running' | 'crashed';
 
 export type CrashCurvePlot = {
@@ -92,6 +95,7 @@ type CrashGraphAnimatedPlot = {
 type CrashGraphContextValue = {
   phase: CrashGraphPhase;
   progress: SpringValue<number>;
+  multiplier: SpringValue<number>;
   visual: SpringValues<CrashGraphVisualState>;
   plot: CrashGraphAnimatedPlot;
   yAxisTicks: Array<{ label: string; y: number }>;
@@ -198,6 +202,13 @@ function multiplierAxisLift(multiplierBp: number) {
   return clamp(multiplier / axisMaxMultiplier, 0, 1);
 }
 
+function multiplierToVisualTimeSeconds(multiplierBp: number) {
+  const elapsedSeconds = Math.max(0, (multiplierBp - 100) / 250);
+  const normalized = clamp(elapsedSeconds / RAW_SECONDS_AT_10X, 0, 1);
+
+  return Math.pow(normalized, VISUAL_TIME_EASING_POWER) * VISUAL_SECONDS_AT_10X;
+}
+
 export function resolveCrashGraphProgress(
   graphProgress: number,
   multiplierBp: number,
@@ -264,7 +275,11 @@ export function buildCrashCurvePlot(
   const axisLift = multiplierAxisLift(multiplierBp);
   const horizontalProgress = isBetting
     ? curveProgress
-    : clamp(normalizedProgress / 4.5, 0, 0.999);
+    : clamp(
+        multiplierToVisualTimeSeconds(multiplierBp) / VISUAL_SECONDS_AT_10X,
+        0,
+        1,
+      );
   const endpointLift = isBetting
     ? clamp(0.028 + curveProgress * 0.065, 0.032, 0.05)
     : clamp(
@@ -416,6 +431,10 @@ export function CrashGraphProvider({
     multiplierBp,
     graphPhase,
   );
+  const multiplier = useSpringValue(multiplierBp, {
+    config: { tension: 180, friction: 24, precision: 0.1 },
+    immediate: reducedMotion,
+  });
   const progress = useSpringValue(targetProgress, {
     config: progressSpringConfig(graphPhase, targetProgress),
     immediate: reducedMotion,
@@ -433,6 +452,19 @@ export function CrashGraphProvider({
   const areaGradientId = `${reactId}-crash-area`;
   const markerGradientId = `${reactId}-crash-marker`;
   const impactGradientId = `${reactId}-crash-impact`;
+
+  useEffect(() => {
+    if (reducedMotion) {
+      multiplier.stop();
+      multiplier.set(multiplierBp);
+      return;
+    }
+
+    void multiplier.start({
+      to: multiplierBp,
+      config: { tension: 180, friction: 24, precision: 0.1 },
+    });
+  }, [multiplier, multiplierBp, reducedMotion]);
 
   useEffect(() => {
     if (reducedMotion) {
@@ -492,10 +524,10 @@ export function CrashGraphProvider({
 
   const animatedPlot = useMemo(
     () =>
-      progress.to((currentProgress) =>
-        buildCrashCurvePlot(currentProgress, multiplierBp, graphPhase),
+      to([progress, multiplier], (currentProgress, currentMultiplierBp) =>
+        buildCrashCurvePlot(currentProgress, currentMultiplierBp, graphPhase),
       ),
-    [graphPhase, multiplierBp, progress],
+    [graphPhase, multiplier, progress],
   );
 
   const plot = useMemo<CrashGraphAnimatedPlot>(() => {
@@ -534,6 +566,7 @@ export function CrashGraphProvider({
     () => ({
       phase: graphPhase,
       progress,
+      multiplier,
       visual,
       plot,
       yAxisTicks,
@@ -553,6 +586,7 @@ export function CrashGraphProvider({
       plot,
       progress,
       reducedMotion,
+      multiplier,
       xAxisTicks,
       yAxisTicks,
       visual,
