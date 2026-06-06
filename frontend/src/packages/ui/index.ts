@@ -9,3 +9,5 @@ export {
   CrashGraphProvider,
   useCrashGraph,
 } from './home-hero-board/crash-graph-context';
+export { default as CrashGraphSvg } from './crash-graph-svg';
+export { default as HomeHeroBoardContent } from './home-hero-board-content';
