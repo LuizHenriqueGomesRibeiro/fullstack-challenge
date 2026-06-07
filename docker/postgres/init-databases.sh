@@ -10,6 +10,10 @@ if [ -n "${POSTGRES_EXTRA_DATABASES:-}" ]; then
   IFS=','
   for db in $POSTGRES_EXTRA_DATABASES; do
     db=$(printf '%s' "$db" | xargs)
+    if [ -z "$db" ]; then
+      continue
+    fi
+
     echo "Creating database: $db"
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
       SELECT 'CREATE DATABASE "$db"'
